@@ -64,13 +64,13 @@ struct NRCSetupGuideView: View {
                             StepView(
                                 number: 2,
                                 title: "进入设置",
-                                description: "点击右下角"我" → 设置"
+                                description: "点击右下角\"我\" → 设置"
                             )
                             
                             StepView(
                                 number: 3,
                                 title: "连接 Apple 健康",
-                                description: "找到"健康"或"Health"选项，开启同步"
+                                description: "找到\"健康\"或\"Health\"选项，开启同步"
                             )
                             
                             StepView(
@@ -82,7 +82,7 @@ struct NRCSetupGuideView: View {
                             StepView(
                                 number: 5,
                                 title: "返回此应用",
-                                description: "点击下方"检查连接"按钮验证设置"
+                                description: "点击下方\"检查连接\"按钮验证设置"
                             )
                         }
                         .padding()

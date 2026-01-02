@@ -316,4 +316,3 @@ struct ConfirmActionSheet: View {
     CoachView()
         .modelContainer(for: [Routine.self], inMemory: true)
 }
-

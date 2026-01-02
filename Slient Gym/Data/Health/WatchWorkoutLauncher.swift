@@ -60,7 +60,12 @@ class WatchWorkoutLauncher: ObservableObject {
             }
             
             // 启动 watch app
-            self?.healthStore.startWatchApp(with: workoutConfig) { success, error in
+            // 创建配置副本以避免 Sendable 问题
+            let configCopy = HKWorkoutConfiguration()
+            configCopy.activityType = workoutConfig.activityType
+            configCopy.locationType = workoutConfig.locationType
+            
+            self?.healthStore.startWatchApp(with: configCopy) { success, error in
                 DispatchQueue.main.async {
                     if success {
                         print("Successfully started watch workout")
