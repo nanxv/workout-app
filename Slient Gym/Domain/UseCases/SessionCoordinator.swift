@@ -54,8 +54,8 @@ class SessionCoordinator: ObservableObject {
     var modelContext: ModelContext
     
     // Track current position for state transitions
-    private var currentExerciseIndex: Int = 0
-    private var currentSetIndex: Int = 0
+    var currentExerciseIndex: Int = 0
+    var currentSetIndex: Int = 0
     
     // Watch integration
     private let watchConnectivity = WatchConnectivityManager.shared

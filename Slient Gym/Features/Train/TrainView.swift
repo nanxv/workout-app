@@ -38,7 +38,9 @@ struct TrainView: View {
                 case .running(let sessionId, let exerciseIndex, let setIndex):
                     trainingView(sessionId: sessionId, exerciseIndex: exerciseIndex, setIndex: setIndex)
                 case .resting(let sessionId, let remaining):
-                    trainingView(sessionId: sessionId, exerciseIndex: 0, setIndex: 0)
+                    // During rest, we should show the current exercise (will be updated after rest)
+                    // For now, use the sessionCoordinator's tracked indices
+                    trainingView(sessionId: sessionId, exerciseIndex: sessionCoordinator.currentExerciseIndex, setIndex: sessionCoordinator.currentSetIndex)
                         .overlay(restTimerOverlay(remaining: remaining))
                 case .paused:
                     Text("Paused")
