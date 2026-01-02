@@ -137,9 +137,23 @@ struct CoachView: View {
             sessionCoordinator.skipRest()
             messages.append(ChatMessage(content: "Skipped rest", isUser: false))
             
-        case .addToCalendar(_):
-            // This will be implemented in Milestone 2
-            messages.append(ChatMessage(content: "Calendar integration coming soon", isUser: false))
+        case .addToCalendar(let sessionId):
+            // Add to calendar
+            if let sessionId = sessionId {
+                // Find session by ID
+                let descriptor = FetchDescriptor<Session>(
+                    predicate: #Predicate { $0.id == sessionId }
+                )
+                if let session = try? modelContext.fetch(descriptor).first {
+                    addSessionToCalendar(session: session)
+                } else {
+                    messages.append(ChatMessage(content: "Session not found", isUser: false))
+                }
+            } else if let currentSession = sessionCoordinator.currentSession {
+                addSessionToCalendar(session: currentSession)
+            } else {
+                messages.append(ChatMessage(content: "No active session to add to calendar", isUser: false))
+            }
             
         case .summarize(let period):
             let summary = generateSummary(period: period)
@@ -155,6 +169,38 @@ struct CoachView: View {
         }
         return "No training data yet."
     }
+    
+    #if os(iOS)
+    private func addSessionToCalendar(session: Session) {
+        // Get the root view controller to present EKEventEditViewController
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController else {
+            messages.append(ChatMessage(content: "Unable to access view controller", isUser: false))
+            return
+        }
+        
+        // Find the topmost view controller
+        var topViewController = rootViewController
+        while let presented = topViewController.presentedViewController {
+            topViewController = presented
+        }
+        
+        CalendarManager.shared.createEventForSession(
+            session: session,
+            presentingViewController: topViewController
+        ) { [weak self] eventId in
+            guard let self = self else { return }
+            if let eventId = eventId {
+                session.calendarEventId = eventId
+                try? self.modelContext.save()
+                self.messages.append(ChatMessage(content: "Added to calendar successfully", isUser: false))
+            } else {
+                self.messages.append(ChatMessage(content: "Failed to add to calendar", isUser: false))
+            }
+        }
+    }
+    #endif
 }
 
 struct ChatMessage: Identifiable {

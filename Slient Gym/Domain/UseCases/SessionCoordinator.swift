@@ -61,6 +61,12 @@ class SessionCoordinator: ObservableObject {
     private let watchConnectivity = WatchConnectivityManager.shared
     private let watchLauncher = WatchWorkoutLauncher.shared
     
+    // Calendar integration
+    #if os(iOS)
+    private let calendarManager = CalendarManager.shared
+    var onSessionEnded: ((Session) -> Void)?
+    #endif
+    
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         setupWatchConnectivity()
@@ -295,6 +301,12 @@ class SessionCoordinator: ObservableObject {
         do {
             try modelContext.save()
             state = .finished(sessionId: session.id)
+            
+            // Notify that session ended (for Calendar integration)
+            #if os(iOS)
+            onSessionEnded?(session)
+            #endif
+            
             currentSession = nil
         } catch {
             state = .error(message: "Failed to end session: \(error.localizedDescription)")

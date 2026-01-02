@@ -147,6 +147,18 @@ struct SessionDetailView: View {
                         Text(formatDuration(duration))
                     }
                 }
+                if session.calendarEventId != nil {
+                    HStack {
+                        Text("Calendar")
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                                .foregroundColor(.blue)
+                            Text("已添加")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
             }
             
             Section("Exercises") {

@@ -7,6 +7,9 @@
 
 import SwiftUI
 import SwiftData
+#if os(iOS)
+import UIKit
+#endif
 
 struct TrainView: View {
     @Environment(\.modelContext) private var modelContext
@@ -17,6 +20,10 @@ struct TrainView: View {
     @State private var currentReps: String = ""
     @State private var currentRIR: Int = 1
     @State private var showRestTimer = false
+    #if os(iOS)
+    @State private var showCalendarSheet = false
+    @State private var endedSession: Session?
+    #endif
     
     init() {
         // Initialize with a temporary context, will be updated in onAppear
@@ -67,10 +74,25 @@ struct TrainView: View {
             sessionCoordinator.modelContext = modelContext
             print("TrainView appeared, routines count: \(routines.count)")
             print("SessionCoordinator state: \(sessionCoordinator.state)")
+            
+            // Setup calendar integration
+            #if os(iOS)
+            sessionCoordinator.onSessionEnded = { [self] session in
+                endedSession = session
+                showCalendarSheet = true
+            }
+            #endif
         }
         .onChange(of: sessionCoordinator.state) { oldValue, newValue in
             handleStateChange(newValue)
         }
+        #if os(iOS)
+        .sheet(isPresented: $showCalendarSheet) {
+            if let session = endedSession {
+                CalendarEventSheet(session: session)
+            }
+        }
+        #endif
     }
     
     private var routineSelectionView: some View {
