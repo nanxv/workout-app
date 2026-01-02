@@ -1,0 +1,27 @@
+name: iOS-watchOS Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.2'
+      - name: Build iOS (Debug)
+        run: |
+          xcodebuild -project "Slient Gym.xcodeproj" \
+            -scheme "Slient Gym" \
+            -sdk iphonesimulator \
+            -configuration Debug build | xcpretty
+      - name: Build watchOS (Debug)
+        run: |
+          xcodebuild -project "Slient Gym.xcodeproj" \
+            -scheme "Slent Gym Watch App" \
+            -sdk watchsimulator \
+            -configuration Debug build | xcpretty
+
