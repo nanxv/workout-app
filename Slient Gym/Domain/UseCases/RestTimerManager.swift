@@ -7,6 +7,9 @@
 
 import Foundation
 import Combine
+#if os(iOS)
+import UIKit
+#endif
 
 enum RestTimerState {
     case off
@@ -18,55 +21,85 @@ class RestTimerManager: ObservableObject {
     @Published var state: RestTimerState = .off
     @Published var remainingSeconds: Int = 0
     
-    private var timer: Timer?
-    private var startTime: Date?
+    private var timer: DispatchSourceTimer?
+    private var expectedEnd: Date? // 使用预期结束时间，而不是开始时间
     private var pausedRemaining: Int = 0
     
     var onTick: ((Int) -> Void)?
     var onFinish: (() -> Void)?
     
+    init() {
+        // 监听应用前后台切换，校正时间
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func applicationDidBecomeActive() {
+        // 前后台切换时，重新计算剩余时间
+        if case .running = state, let end = expectedEnd {
+            tick()
+        }
+    }
+    
     func start(seconds: Int) {
         stop()
         remainingSeconds = seconds
         pausedRemaining = seconds
-        startTime = Date()
+        // 使用预期结束时间，而不是开始时间（时间戳校正）
+        expectedEnd = Date().addingTimeInterval(TimeInterval(seconds))
         state = .running(remaining: seconds)
         
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-                self?.tick()
-            }
-            RunLoop.current.add(self.timer!, forMode: .common)
+        // 使用 DispatchSourceTimer 更精确
+        timer?.cancel()
+        let newTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+        newTimer.schedule(deadline: .now(), repeating: .milliseconds(200))
+        newTimer.setEventHandler { [weak self] in
+            self?.tick()
         }
+        newTimer.resume()
+        timer = newTimer
+        
+        // 立即执行一次 tick
+        tick()
     }
     
     func pause() {
         guard case .running(let remaining) = state else { return }
-        timer?.invalidate()
+        timer?.cancel()
         timer = nil
         pausedRemaining = remaining
         state = .paused(remaining: remaining)
+        expectedEnd = nil // 暂停时清除预期结束时间
     }
     
     func resume() {
         guard case .paused(let remaining) = state else { return }
-        startTime = Date()
+        // 恢复时，基于当前剩余时间重新计算预期结束时间
+        expectedEnd = Date().addingTimeInterval(TimeInterval(remaining))
         state = .running(remaining: remaining)
         remainingSeconds = remaining
         
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-                self?.tick()
-            }
-            RunLoop.current.add(self.timer!, forMode: .common)
+        // 重新启动定时器
+        timer?.cancel()
+        let newTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+        newTimer.schedule(deadline: .now(), repeating: .milliseconds(200))
+        newTimer.setEventHandler { [weak self] in
+            self?.tick()
         }
+        newTimer.resume()
+        timer = newTimer
+        tick()
     }
     
     func extend(by seconds: Int) {
         if case .running(let remaining) = state {
+            // 延长时，更新预期结束时间
             let newRemaining = remaining + seconds
+            expectedEnd = Date().addingTimeInterval(TimeInterval(newRemaining))
             remainingSeconds = newRemaining
             pausedRemaining = newRemaining
             state = .running(remaining: newRemaining)
@@ -83,32 +116,33 @@ class RestTimerManager: ObservableObject {
     }
     
     func stop() {
-        timer?.invalidate()
+        timer?.cancel()
         timer = nil
-        startTime = nil
+        expectedEnd = nil
         remainingSeconds = 0
         pausedRemaining = 0
         state = .off
     }
     
     private func tick() {
-        guard let startTime = startTime else { return }
+        guard let end = expectedEnd else { return }
+        
+        // 使用时间戳校正：基于预期结束时间和当前时间计算剩余时间
+        let remaining = max(0, end.timeIntervalSinceNow)
+        let remainingInt = Int(remaining)
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
-            let elapsed = Int(Date().timeIntervalSince(startTime))
-            let newRemaining = max(0, self.pausedRemaining - elapsed)
-            
-            self.remainingSeconds = newRemaining
+            self.remainingSeconds = remainingInt
             
             if case .running = self.state {
-                self.state = .running(remaining: newRemaining)
+                self.state = .running(remaining: remainingInt)
             }
             
-            self.onTick?(newRemaining)
+            self.onTick?(remainingInt)
             
-            if newRemaining <= 0 {
+            if remainingInt <= 0 {
                 self.stop()
                 self.onFinish?()
             }
@@ -116,6 +150,7 @@ class RestTimerManager: ObservableObject {
     }
     
     deinit {
+        NotificationCenter.default.removeObserver(self)
         stop()
     }
 }

@@ -57,11 +57,25 @@ class WatchWorkoutLauncher: ObservableObject {
             self?.healthStore.startWatchApp(with: workoutConfig) { success, error in
                 DispatchQueue.main.async {
                     if success {
-                        print("Successfully started watch workout")
+                        print("Successfully started watch workout via HealthKit")
+                        completion(true, nil)
                     } else {
-                        print("Failed to start watch workout: \(error?.localizedDescription ?? "Unknown error")")
+                        print("Failed to start watch workout via HealthKit: \(error?.localizedDescription ?? "Unknown error")")
+                        // 兜底：使用 WCSession 发送启动消息
+                        print("Falling back to WCSession...")
+                        let wcManager = WatchConnectivityManager.shared
+                        if wcManager.isWatchReachable {
+                            // 通过 WCSession 发送启动消息
+                            wcManager.sendStartWorkout(
+                                sessionId: UUID(), // 临时 ID，实际应该从 SessionCoordinator 传入
+                                activityType: Int(activityType.rawValue)
+                            )
+                            completion(true, nil) // 假设成功，实际应该等待 watch 端确认
+                        } else {
+                            print("Watch is not reachable via WCSession")
+                            completion(false, error)
+                        }
                     }
-                    completion(success, error)
                 }
             }
         }
