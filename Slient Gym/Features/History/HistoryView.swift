@@ -117,9 +117,27 @@ struct SessionRowView: View {
                 Text(session.routine?.name ?? "Unknown Routine")
                     .font(.headline)
                 Spacer()
-                if session.healthWorkoutUUID != nil {
-                    Image(systemName: "heart.fill")
-                        .foregroundColor(.red)
+                // 状态图标
+                HStack(spacing: 8) {
+                    if session.healthWorkoutUUID != nil {
+                        Image(systemName: "heart.fill")
+                            .foregroundColor(.green)
+                            .font(.caption)
+                    } else {
+                        Image(systemName: "heart.slash")
+                            .foregroundColor(.gray)
+                            .font(.caption)
+                    }
+                    if session.calendarEventId != nil {
+                        Image(systemName: "calendar")
+                            .foregroundColor(.green)
+                            .font(.caption)
+                    } else {
+                        Image(systemName: "calendar.badge.minus")
+                            .foregroundColor(.gray)
+                            .font(.caption)
+                    }
+                }
                         .font(.caption)
                 }
                 if session.calendarEventId != nil {
