@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 #if os(iOS)
 import HealthKit
+import UIKit
 #endif
 
 enum HistoryFilter: String, CaseIterable {
@@ -25,6 +26,7 @@ struct HistoryView: View {
     @StateObject private var importManager = HealthImportManager.shared
     @State private var isImporting = false
     @State private var showNRCGuide = false
+    @State private var showFirstTimeNRCGuide = false
     
     var body: some View {
         NavigationStack {
@@ -223,15 +225,62 @@ struct SessionDetailView: View {
                         Text(formatDuration(duration))
                     }
                 }
-                if session.calendarEventId != nil {
-                    HStack {
-                        Text("Calendar")
-                        Spacer()
+                // HealthKit 同步状态
+                HStack {
+                    Text("HealthKit 同步")
+                    Spacer()
+                    if session.healthWorkoutUUID != nil {
                         HStack(spacing: 4) {
-                            Image(systemName: "calendar")
-                                .foregroundColor(.blue)
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("已同步")
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        HStack(spacing: 8) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray)
+                                Text("未同步")
+                                    .foregroundColor(.secondary)
+                            }
+                            #if os(iOS)
+                            Button("重试") {
+                                retryHealthSync()
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            #endif
+                        }
+                    }
+                }
+                
+                // Calendar 状态
+                HStack {
+                    Text("日历事件")
+                    Spacer()
+                    if session.calendarEventId != nil {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
                             Text("已添加")
                                 .foregroundColor(.secondary)
+                        }
+                    } else {
+                        HStack(spacing: 8) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray)
+                                Text("未添加")
+                                    .foregroundColor(.secondary)
+                            }
+                            #if os(iOS)
+                            Button("重试") {
+                                retryCalendarAdd()
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            #endif
                         }
                     }
                 }
