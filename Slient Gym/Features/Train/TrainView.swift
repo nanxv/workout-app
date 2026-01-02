@@ -23,6 +23,7 @@ struct TrainView: View {
     #if os(iOS)
     @State private var showCalendarSheet = false
     @State private var endedSession: Session?
+    @State private var showPermissionGuide: PermissionType?
     #endif
     
     init() {
@@ -35,10 +36,19 @@ struct TrainView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                switch sessionCoordinator.state {
-                case .idle:
-                    routineSelectionView
+            VStack(spacing: 0) {
+                #if os(iOS)
+                // 状态指示器
+                if case .idle = sessionCoordinator.state {
+                    StatusIndicatorView()
+                        .padding(.top, 8)
+                }
+                #endif
+                
+                Group {
+                    switch sessionCoordinator.state {
+                    case .idle:
+                        routineSelectionView
                 case .starting:
                     VStack {
                         ProgressView()
@@ -68,6 +78,7 @@ struct TrainView: View {
                         }
                     }
                 }
+                }
             }
             .navigationTitle("Train")
         }
@@ -93,6 +104,9 @@ struct TrainView: View {
             if let session = endedSession {
                 CalendarEventSheet(session: session)
             }
+        }
+        .sheet(item: $showPermissionGuide) { permissionType in
+            PermissionGuideView(permissionType: permissionType)
         }
         #endif
     }

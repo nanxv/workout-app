@@ -7,10 +7,18 @@
 
 import SwiftUI
 
-enum PermissionType {
+enum PermissionType: Identifiable {
     case healthKit
     case calendar
     case nrc
+    
+    var id: String {
+        switch self {
+        case .healthKit: return "healthKit"
+        case .calendar: return "calendar"
+        case .nrc: return "nrc"
+        }
+    }
     
     var title: String {
         switch self {

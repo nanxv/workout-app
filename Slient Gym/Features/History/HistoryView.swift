@@ -75,6 +75,20 @@ struct HistoryView: View {
             .sheet(isPresented: $showNRCGuide) {
                 NRCSetupGuideView()
             }
+            .sheet(isPresented: $showFirstTimeNRCGuide) {
+                PermissionGuideView(permissionType: .nrc)
+            }
+            .onAppear {
+                // 首次进入 Cardio 分段时显示引导
+                if selectedFilter == .cardio && externalWorkouts.isEmpty {
+                    // 检查是否已经显示过引导
+                    let hasShownGuide = UserDefaults.standard.bool(forKey: "hasShownNRCGuide")
+                    if !hasShownGuide {
+                        showFirstTimeNRCGuide = true
+                        UserDefaults.standard.set(true, forKey: "hasShownNRCGuide")
+                    }
+                }
+            }
         }
     }
     
@@ -175,6 +189,12 @@ struct SessionRowView: View {
 
 struct SessionDetailView: View {
     let session: Session
+    @Environment(\.modelContext) private var modelContext
+    @State private var showPermissionGuide: PermissionType?
+    #if os(iOS)
+    @StateObject private var calendarManager = CalendarManager.shared
+    @StateObject private var watchLauncher = WatchWorkoutLauncher.shared
+    #endif
     
     var body: some View {
         List {
@@ -227,7 +247,47 @@ struct SessionDetailView: View {
         }
         .navigationTitle("Session Details")
         .navigationBarTitleDisplayMode(.inline)
+        #if os(iOS)
+        .sheet(item: $showPermissionGuide) { permissionType in
+            PermissionGuideView(permissionType: permissionType)
+        }
+        #endif
     }
+    
+    #if os(iOS)
+    private func retryHealthSync() {
+        // 重试写入 HealthKit（通过 Watch）
+        // 注意：这需要重新启动 workout，实际实现可能需要更复杂的逻辑
+        watchLauncher.startWatchWorkout(sessionId: session.id) { success, error in
+            if !success {
+                showPermissionGuide = .healthKit
+            }
+        }
+    }
+    
+    private func retryCalendarAdd() {
+        // 获取当前视图控制器来展示日历编辑界面
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            showPermissionGuide = .calendar
+            return
+        }
+        
+        var topViewController = rootViewController
+        while let presented = topViewController.presentedViewController {
+            topViewController = presented
+        }
+        
+        calendarManager.createEventForSession(
+            session: session,
+            presentingViewController: topViewController
+        ) { eventId in
+            if eventId == nil {
+                showPermissionGuide = .calendar
+            }
+        }
+    }
+    #endif
     
     private func formatDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
