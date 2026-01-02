@@ -34,10 +34,25 @@ struct ProgressView: View {
             
             let weekStats = calculateWeekStats()
             
-            HStack(spacing: 20) {
-                StatCard(title: "Strength", value: "\(weekStats.strengthMinutes) min", icon: "dumbbell.fill")
-                StatCard(title: "Cardio", value: "\(weekStats.cardioMinutes) min", icon: "figure.run")
-                StatCard(title: "Sessions", value: "\(weekStats.totalSessions)", icon: "calendar")
+            VStack(spacing: 12) {
+                HStack(spacing: 20) {
+                    StatCard(title: "Strength", value: "\(weekStats.strengthMinutes) min", icon: "dumbbell.fill")
+                    StatCard(title: "Cardio", value: "\(weekStats.cardioMinutes) min", icon: "figure.run")
+                    StatCard(title: "Sessions", value: "\(weekStats.totalSessions)", icon: "calendar")
+                }
+                
+                if weekStats.totalDistance > 0 {
+                    HStack {
+                        Image(systemName: "map.fill")
+                            .foregroundColor(.blue)
+                        Text("Total Distance: \(String(format: "%.2f", weekStats.totalDistance)) km")
+                            .font(.subheadline)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+                }
             }
         }
         .padding()
@@ -62,11 +77,11 @@ struct ProgressView: View {
         }
     }
     
-    private func calculateWeekStats() -> (strengthMinutes: Int, cardioMinutes: Int, totalSessions: Int) {
+    private func calculateWeekStats() -> (strengthMinutes: Int, cardioMinutes: Int, totalSessions: Int, totalDistance: Double) {
         let calendar = Calendar.current
         let now = Date()
         guard let weekStart = calendar.date(byAdding: .day, value: -7, to: now) else {
-            return (0, 0, 0)
+            return (0, 0, 0, 0)
         }
         
         let weekSessions = sessions.filter { $0.startAt >= weekStart }
@@ -75,8 +90,9 @@ struct ProgressView: View {
         let strengthMinutes = weekSessions.compactMap { $0.duration }.reduce(0) { $0 + Int($1) / 60 }
         let cardioMinutes = Int(weekWorkouts.reduce(0) { $0 + $1.duration }) / 60
         let totalSessions = weekSessions.count + weekWorkouts.count
+        let totalDistance = weekWorkouts.compactMap { $0.totalDistance }.reduce(0, +) / 1000.0 // Convert to km
         
-        return (strengthMinutes, cardioMinutes, totalSessions)
+        return (strengthMinutes, cardioMinutes, totalSessions, totalDistance)
     }
     
     private func calculateExerciseStats() -> [String: (bestReps: Int, totalReps: Int, avgRIR: Double)] {

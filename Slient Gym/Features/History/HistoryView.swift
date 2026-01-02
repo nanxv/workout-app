@@ -7,6 +7,9 @@
 
 import SwiftUI
 import SwiftData
+#if os(iOS)
+import HealthKit
+#endif
 
 enum HistoryFilter: String, CaseIterable {
     case all = "All"
@@ -19,6 +22,9 @@ struct HistoryView: View {
     @Query(sort: \Session.startAt, order: .reverse) private var sessions: [Session]
     @Query(sort: \ExternalWorkout.startAt, order: .reverse) private var externalWorkouts: [ExternalWorkout]
     @State private var selectedFilter: HistoryFilter = .all
+    @StateObject private var importManager = HealthImportManager.shared
+    @State private var isImporting = false
+    @State private var showNRCGuide = false
     
     var body: some View {
         NavigationStack {
@@ -44,7 +50,39 @@ struct HistoryView: View {
                 }
             }
             .navigationTitle("History")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button(action: {
+                            Task {
+                                await importRunningWorkouts()
+                            }
+                        }) {
+                            Label("Import Running", systemImage: "arrow.down.circle")
+                        }
+                        .disabled(isImporting)
+                        
+                        Button(action: {
+                            showNRCGuide = true
+                        }) {
+                            Label("NRC Setup Guide", systemImage: "questionmark.circle")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
+            .sheet(isPresented: $showNRCGuide) {
+                NRCSetupGuideView()
+            }
         }
+    }
+    
+    private func importRunningWorkouts() async {
+        isImporting = true
+        let count = await importManager.importRunningWorkouts(days: 90, context: modelContext)
+        isImporting = false
+        print("Imported \(count) workouts")
     }
     
     private var strengthSection: some View {
@@ -215,9 +253,16 @@ struct ExternalWorkoutRowView: View {
                     .font(.headline)
                 Spacer()
                 if let sourceName = workout.sourceName {
-                    Text(sourceName)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        if sourceName.contains("Nike") || sourceName.contains("NRC") {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundColor(.orange)
+                                .font(.caption)
+                        }
+                        Text(sourceName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             
@@ -225,13 +270,29 @@ struct ExternalWorkoutRowView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             
-            HStack {
+            HStack(spacing: 12) {
                 if let distance = workout.totalDistance {
-                    Text(String(format: "%.2f km", distance / 1000))
+                    HStack(spacing: 4) {
+                        Image(systemName: "map.fill")
+                            .font(.caption2)
+                        Text(String(format: "%.2f km", distance / 1000))
+                            .font(.caption)
+                    }
+                }
+                HStack(spacing: 4) {
+                    Image(systemName: "clock.fill")
+                        .font(.caption2)
+                    Text(formatDuration(workout.duration))
                         .font(.caption)
                 }
-                Text(formatDuration(workout.duration))
-                    .font(.caption)
+                if let energy = workout.totalEnergy {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flame.fill")
+                            .font(.caption2)
+                        Text(String(format: "%.0f kcal", energy))
+                            .font(.caption)
+                    }
+                }
             }
             .foregroundColor(.secondary)
         }

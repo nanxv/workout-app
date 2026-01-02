@@ -15,6 +15,7 @@ struct CoachView: View {
     @State private var messages: [ChatMessage] = []
     @State private var pendingAction: AppAction?
     @State private var showConfirmSheet = false
+    @State private var useOpenAI = false // 切换本地/OpenAI 解析
     
     init() {
         // Initialize with a temporary context, will be updated in onAppear
@@ -53,6 +54,13 @@ struct CoachView: View {
                 .padding()
             }
             .navigationTitle("Coach")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Toggle("AI", isOn: $useOpenAI)
+                        .toggleStyle(.switch)
+                        .help("Use OpenAI (requires backend)")
+                }
+            }
             .onAppear {
                 sessionCoordinator.modelContext = modelContext
             }
@@ -80,22 +88,46 @@ struct CoachView: View {
         let command = inputText
         inputText = ""
         
-        // Parse command
-        if let action = CoachCommandRouter.parse(command) {
-            let needsConfirmation = needsConfirmationForAction(action)
+        // Parse command (local or OpenAI)
+        Task {
+            let action: AppAction?
             
-            if needsConfirmation {
-                pendingAction = action
-                showConfirmSheet = true
+            if useOpenAI {
+                // Use OpenAI (requires backend)
+                #if os(iOS)
+                let context = AppContext(
+                    currentState: String(describing: sessionCoordinator.state),
+                    currentRoutine: sessionCoordinator.currentSession?.routine?.name,
+                    currentExercise: nil, // Could be enhanced
+                    availableRoutines: []
+                )
+                action = await OpenAICommandClient.shared.processCommand(command, context: context)
+                #else
+                action = CoachCommandRouter.parse(command)
+                #endif
             } else {
-                executeAction(action)
+                // Use local parser
+                action = CoachCommandRouter.parse(command)
             }
-        } else {
-            let coachMessage = ChatMessage(
-                content: "I didn't understand that command. Try:\n- 开始 Day A\n- 结束训练\n- 跳过休息\n- 总结",
-                isUser: false
-            )
-            messages.append(coachMessage)
+            
+            await MainActor.run {
+                if let action = action {
+                    let needsConfirmation = needsConfirmationForAction(action)
+                    
+                    if needsConfirmation {
+                        pendingAction = action
+                        showConfirmSheet = true
+                    } else {
+                        executeAction(action)
+                    }
+                } else {
+                    let coachMessage = ChatMessage(
+                        content: "I didn't understand that command. Try:\n- 开始 Day A\n- 结束训练\n- 跳过休息\n- 总结",
+                        isUser: false
+                    )
+                    messages.append(coachMessage)
+                }
+            }
         }
     }
     
