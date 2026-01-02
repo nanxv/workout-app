@@ -133,8 +133,8 @@ class SessionCoordinator: ObservableObject {
             state = .running(sessionId: session.id, currentExerciseIndex: 0, currentSetIndex: 0)
             
             // Start watch workout
-            #if os(iOS)
-            watchLauncher.startWatchWorkout { [weak self] success, error in
+                #if os(iOS)
+                watchLauncher.startWatchWorkout(sessionId: session.id) { [weak self] success, error in
                 if success {
                     // Send start message via WatchConnectivity
                     self?.watchConnectivity.sendStartWorkout(
