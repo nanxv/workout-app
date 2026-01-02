@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 import EventKit
 import EventKitUI
 
@@ -37,12 +38,27 @@ class CalendarManager: NSObject, ObservableObject {
             loadDefaultCalendar()
             return true
         case .notDetermined:
-            let granted = try? await eventStore.requestAccess(to: .event)
-            authorizationStatus = EKEventStore.authorizationStatus(for: .event)
-            if granted == true {
-                loadDefaultCalendar()
+            // Use the new iOS 17+ API
+            if #available(iOS 17.0, *) {
+                do {
+                    try await eventStore.requestFullAccessToEvents()
+                    authorizationStatus = EKEventStore.authorizationStatus(for: .event)
+                    loadDefaultCalendar()
+                    return true
+                } catch {
+                    print("Calendar access denied: \(error.localizedDescription)")
+                    authorizationStatus = EKEventStore.authorizationStatus(for: .event)
+                    return false
+                }
+            } else {
+                // Fallback for iOS 16 and earlier
+                let granted = try? await eventStore.requestAccess(to: .event)
+                authorizationStatus = EKEventStore.authorizationStatus(for: .event)
+                if granted == true {
+                    loadDefaultCalendar()
+                }
+                return granted == true
             }
-            return granted == true
         case .denied, .restricted, .writeOnly:
             authorizationStatus = status
             return false
