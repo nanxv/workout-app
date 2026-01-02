@@ -143,8 +143,8 @@ class HealthImportManager: ObservableObject {
                 
                 let finalCount = workoutsData.count
                 
-                // 在主线程上插入和保存
-                await MainActor.run {
+                // 在主线程上插入和保存（使用 Task 而不是 await，因为回调是同步的）
+                Task { @MainActor in
                     for workoutData in workoutsData {
                         let externalWorkout = ExternalWorkout(
                             uuid: workoutData.0,
