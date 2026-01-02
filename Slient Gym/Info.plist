@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>我们需要访问您的健康数据以读取跑步记录和心率信息。</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>我们需要写入训练数据到健康应用，包括训练时长、心率等信息。</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>我们需要访问您的日历来添加训练记录。</string>
+</dict>
+</plist>
+
