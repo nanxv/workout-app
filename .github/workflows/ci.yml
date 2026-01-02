@@ -21,7 +21,7 @@ jobs:
       - name: Build watchOS (Debug)
         run: |
           xcodebuild -project "Slient Gym.xcodeproj" \
-            -scheme "Slent Gym Watch App" \
+            -scheme "Slient Gym Watch App" \
             -sdk watchsimulator \
             -configuration Debug build | xcpretty
 
