@@ -40,7 +40,7 @@ class RestTimerManager: ObservableObject {
     
     @objc private func applicationDidBecomeActive() {
         // 前后台切换时，重新计算剩余时间
-        if case .running = state, let end = expectedEnd {
+        if case .running = state, expectedEnd != nil {
             tick()
         }
     }

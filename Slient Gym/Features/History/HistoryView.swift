@@ -153,13 +153,6 @@ struct SessionRowView: View {
                             .font(.caption)
                     }
                 }
-                        .font(.caption)
-                }
-                if session.calendarEventId != nil {
-                    Image(systemName: "calendar")
-                        .foregroundColor(.blue)
-                        .font(.caption)
-                }
             }
             
             Text(session.startAt, style: .date)

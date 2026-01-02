@@ -108,13 +108,11 @@ class HealthImportManager: ObservableObject {
                 
                 var importedCount = 0
                 
-                // 收集要导入的 workouts
-                var workoutsToImport: [ExternalWorkout] = []
-                
-                for workout in workouts {
+                // 收集要导入的 workouts（在主线程上处理）
+                let workoutsData = workouts.compactMap { workout -> (UUID, Int, Date, Date, Double, Double?, Double?, String, String)? in
                     // 检查是否已导入
                     if existingUUIDs.contains(workout.uuid) {
-                        continue
+                        return nil
                     }
                     
                     // 识别来源
@@ -130,37 +128,47 @@ class HealthImportManager: ObservableObject {
                         totalEnergy = workout.totalEnergyBurned?.doubleValue(for: HKUnit.kilocalorie())
                     }
                     
-                    let externalWorkout = ExternalWorkout(
-                        uuid: workout.uuid,
-                        activityType: Int(workout.workoutActivityType.rawValue),
-                        startAt: workout.startDate,
-                        endAt: workout.endDate,
-                        duration: workout.duration,
-                        totalDistance: workout.totalDistance?.doubleValue(for: HKUnit.meter()),
-                        totalEnergy: totalEnergy,
-                        sourceName: sourceName,
-                        sourceBundleId: sourceBundleId,
-                        importedAt: Date()
+                    return (
+                        workout.uuid,
+                        Int(workout.workoutActivityType.rawValue),
+                        workout.startDate,
+                        workout.endDate,
+                        workout.duration,
+                        workout.totalDistance?.doubleValue(for: HKUnit.meter()),
+                        totalEnergy,
+                        sourceName,
+                        sourceBundleId
                     )
-                    
-                    workoutsToImport.append(externalWorkout)
-                    importedCount += 1
                 }
                 
+                let finalCount = workoutsData.count
+                
                 // 在主线程上插入和保存
-                Task { @MainActor in
-                    for workout in workoutsToImport {
-                        context.insert(workout)
+                await MainActor.run {
+                    for workoutData in workoutsData {
+                        let externalWorkout = ExternalWorkout(
+                            uuid: workoutData.0,
+                            activityType: workoutData.1,
+                            startAt: workoutData.2,
+                            endAt: workoutData.3,
+                            duration: workoutData.4,
+                            totalDistance: workoutData.5,
+                            totalEnergy: workoutData.6,
+                            sourceName: workoutData.7,
+                            sourceBundleId: workoutData.8,
+                            importedAt: Date()
+                        )
+                        context.insert(externalWorkout)
                     }
                     
                     do {
                         try context.save()
                         self.lastImportDate = Date()
-                        print("Imported \(importedCount) running workouts")
-                        continuation.resume(returning: importedCount)
+                        print("Imported \(finalCount) running workouts")
+                        continuation.resume(returning: finalCount)
                     } catch {
                         print("Error saving imported workouts: \(error.localizedDescription)")
-                        continuation.resume(returning: importedCount)
+                        continuation.resume(returning: finalCount)
                     }
                 }
             }

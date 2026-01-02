@@ -35,11 +35,11 @@ struct Slient_GymApp: App {
                 .task {
                     // Generate sample data on first launch (async, non-blocking)
                     Task.detached(priority: .userInitiated) {
-                        let context = ModelContext(sharedModelContainer)
-                        SampleDataGenerator.generateSampleData(context: context)
-                        
-                        // Verify data was created
                         await MainActor.run {
+                            let context = ModelContext(sharedModelContainer)
+                            SampleDataGenerator.generateSampleData(context: context)
+                            
+                            // Verify data was created
                             let descriptor = FetchDescriptor<Routine>()
                             if let routines = try? context.fetch(descriptor) {
                                 print("Sample data check: \(routines.count) routines created")
