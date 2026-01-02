@@ -221,14 +221,13 @@ struct CoachView: View {
         CalendarManager.shared.createEventForSession(
             session: session,
             presentingViewController: topViewController
-        ) { [weak self] eventId in
-            guard let self = self else { return }
+        ) { eventId in
             if let eventId = eventId {
                 session.calendarEventId = eventId
-                try? self.modelContext.save()
-                self.messages.append(ChatMessage(content: "Added to calendar successfully", isUser: false))
+                try? modelContext.save()
+                messages.append(ChatMessage(content: "Added to calendar successfully", isUser: false))
             } else {
-                self.messages.append(ChatMessage(content: "Failed to add to calendar", isUser: false))
+                messages.append(ChatMessage(content: "Failed to add to calendar", isUser: false))
             }
         }
     }
