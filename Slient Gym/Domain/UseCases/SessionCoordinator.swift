@@ -86,8 +86,12 @@ class SessionCoordinator: ObservableObject {
     }
     
     func startSession(routineId: UUID) -> Session? {
-        guard case .idle = state else { return nil }
+        guard case .idle = state else {
+            print("Cannot start session: current state is \(state)")
+            return nil
+        }
         
+        print("Starting session for routine: \(routineId)")
         state = .starting(routineId: routineId)
         
         let descriptor = FetchDescriptor<Routine>(

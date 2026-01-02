@@ -37,6 +37,15 @@ struct Slient_GymApp: App {
                     let context = ModelContext(sharedModelContainer)
                     SampleDataGenerator.generateSampleData(context: context)
                     
+                    // Verify data was created
+                    let descriptor = FetchDescriptor<Routine>()
+                    if let routines = try? context.fetch(descriptor) {
+                        print("Sample data check: \(routines.count) routines created")
+                        for routine in routines {
+                            print("  - \(routine.name)")
+                        }
+                    }
+                    
                     // Initialize WatchConnectivity
                     _ = WatchConnectivityManager.shared
                 }

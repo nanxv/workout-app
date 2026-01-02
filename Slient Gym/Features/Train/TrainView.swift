@@ -65,6 +65,8 @@ struct TrainView: View {
         .onAppear {
             // Update sessionCoordinator with actual modelContext
             sessionCoordinator.modelContext = modelContext
+            print("TrainView appeared, routines count: \(routines.count)")
+            print("SessionCoordinator state: \(sessionCoordinator.state)")
         }
         .onChange(of: sessionCoordinator.state) { oldValue, newValue in
             handleStateChange(newValue)
@@ -77,18 +79,35 @@ struct TrainView: View {
                 .font(.title2)
                 .padding()
             
-            List(routines) { routine in
-                Button(action: {
-                    selectedRoutineId = routine.id
-                    _ = sessionCoordinator.startSession(routineId: routine.id)
-                }) {
-                    HStack {
-                        Text(routine.name)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Image(systemName: "play.circle.fill")
-                            .foregroundColor(.blue)
+            if routines.isEmpty {
+                VStack(spacing: 12) {
+                    Text("No routines available")
+                        .foregroundColor(.secondary)
+                    Text("Please check if sample data was generated")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+            } else {
+                List(routines) { routine in
+                    Button(action: {
+                        print("Starting routine: \(routine.name)")
+                        selectedRoutineId = routine.id
+                        if let session = sessionCoordinator.startSession(routineId: routine.id) {
+                            print("Session started: \(session.id)")
+                        } else {
+                            print("Failed to start session")
+                        }
+                    }) {
+                        HStack {
+                            Text(routine.name)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "play.circle.fill")
+                                .foregroundColor(.blue)
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
