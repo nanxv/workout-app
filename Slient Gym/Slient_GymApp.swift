@@ -32,21 +32,25 @@ struct Slient_GymApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
-                .onAppear {
-                    // Generate sample data on first launch
-                    let context = ModelContext(sharedModelContainer)
-                    SampleDataGenerator.generateSampleData(context: context)
-                    
-                    // Verify data was created
-                    let descriptor = FetchDescriptor<Routine>()
-                    if let routines = try? context.fetch(descriptor) {
-                        print("Sample data check: \(routines.count) routines created")
-                        for routine in routines {
-                            print("  - \(routine.name)")
+                .task {
+                    // Generate sample data on first launch (async, non-blocking)
+                    Task.detached(priority: .userInitiated) {
+                        let context = ModelContext(sharedModelContainer)
+                        SampleDataGenerator.generateSampleData(context: context)
+                        
+                        // Verify data was created
+                        await MainActor.run {
+                            let descriptor = FetchDescriptor<Routine>()
+                            if let routines = try? context.fetch(descriptor) {
+                                print("Sample data check: \(routines.count) routines created")
+                                for routine in routines {
+                                    print("  - \(routine.name)")
+                                }
+                            }
                         }
                     }
                     
-                    // Initialize WatchConnectivity
+                    // Initialize WatchConnectivity (non-blocking, already async)
                     _ = WatchConnectivityManager.shared
                 }
         }

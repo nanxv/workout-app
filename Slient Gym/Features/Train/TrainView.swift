@@ -27,7 +27,9 @@ struct TrainView: View {
     
     init() {
         // Initialize with a temporary context, will be updated in onAppear
-        let tempContext = ModelContext(PersistenceController.shared.container)
+        // Use lazy initialization to avoid blocking
+        let tempContainer = PersistenceController.shared.container
+        let tempContext = ModelContext(tempContainer)
         _sessionCoordinator = StateObject(wrappedValue: SessionCoordinator(modelContext: tempContext))
     }
     

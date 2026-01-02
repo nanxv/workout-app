@@ -23,7 +23,10 @@ class WatchConnectivityManager: NSObject, ObservableObject {
     
     override init() {
         super.init()
-        setupWatchConnectivity()
+        // Setup asynchronously to avoid blocking
+        Task { @MainActor in
+            setupWatchConnectivity()
+        }
     }
     
     private func setupWatchConnectivity() {
