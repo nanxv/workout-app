@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 import HealthKit
 import SwiftData
 
@@ -69,18 +70,23 @@ class HealthImportManager: ObservableObject {
         
         // 查询 Running workouts
         let workoutType = HKObjectType.workoutType()
+        let startDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
         let predicate = HKQuery.predicateForWorkouts(
-            with: .running,
-            startDate: Calendar.current.date(byAdding: .day, value: -days, to: Date()),
-            endDate: Date()
+            with: .running
         )
+        let datePredicate = HKQuery.predicateForSamples(
+            withStart: startDate,
+            end: Date(),
+            options: .strictStartDate
+        )
+        let combinedPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [predicate, datePredicate])
         
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
         
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(
                 sampleType: workoutType,
-                predicate: predicate,
+                predicate: combinedPredicate,
                 limit: HKObjectQueryNoLimit,
                 sortDescriptors: [sortDescriptor]
             ) { [weak self] query, samples, error in
@@ -120,7 +126,7 @@ class HealthImportManager: ObservableObject {
                     // 创建 ExternalWorkout
                     let externalWorkout = ExternalWorkout(
                         uuid: workout.uuid,
-                        activityType: workout.workoutActivityType.rawValue,
+                        activityType: Int(workout.workoutActivityType.rawValue),
                         startAt: workout.startDate,
                         endAt: workout.endDate,
                         duration: workout.duration,

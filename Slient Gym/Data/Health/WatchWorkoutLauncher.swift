@@ -34,22 +34,12 @@ class WatchWorkoutLauncher: ObservableObject {
             return
         }
         
-        // 创建 workout configuration
-        let configuration = HKWorkoutConfiguration()
-        configuration.activityType = activityType
-        configuration.locationType = .indoor
-        
         // 请求必要的权限
         let typesToShare: Set<HKSampleType> = [HKObjectType.workoutType()]
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .heartRate)!,
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
         ]
-        
-        // 创建配置的副本以避免 Sendable 问题
-        let workoutConfig = HKWorkoutConfiguration()
-        workoutConfig.activityType = configuration.activityType
-        workoutConfig.locationType = configuration.locationType
         
         healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead) { [weak self] success, error in
             guard success, error == nil else {
@@ -59,13 +49,12 @@ class WatchWorkoutLauncher: ObservableObject {
                 return
             }
             
-            // 启动 watch app
-            // 创建配置副本以避免 Sendable 问题
-            let configCopy = HKWorkoutConfiguration()
-            configCopy.activityType = workoutConfig.activityType
-            configCopy.locationType = workoutConfig.locationType
+            // 在闭包内创建配置，避免 Sendable 问题
+            let workoutConfig = HKWorkoutConfiguration()
+            workoutConfig.activityType = activityType
+            workoutConfig.locationType = .indoor
             
-            self?.healthStore.startWatchApp(with: configCopy) { success, error in
+            self?.healthStore.startWatchApp(with: workoutConfig) { success, error in
                 DispatchQueue.main.async {
                     if success {
                         print("Successfully started watch workout")
