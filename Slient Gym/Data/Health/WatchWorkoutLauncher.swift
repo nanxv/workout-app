@@ -22,9 +22,11 @@ class WatchWorkoutLauncher: ObservableObject {
     
     /// 启动 Apple Watch workout session
     /// - Parameters:
+    ///   - sessionId: 当前训练 Session 的 ID
     ///   - activityType: HKWorkoutActivityType，默认使用 Traditional Strength Training
     ///   - completion: 完成回调，返回是否成功
     func startWatchWorkout(
+        sessionId: UUID,
         activityType: HKWorkoutActivityType = .traditionalStrengthTraining,
         completion: @escaping (Bool, Error?) -> Void
     ) {
@@ -67,13 +69,17 @@ class WatchWorkoutLauncher: ObservableObject {
                         if wcManager.isWatchReachable {
                             // 通过 WCSession 发送启动消息
                             wcManager.sendStartWorkout(
-                                sessionId: UUID(), // 临时 ID，实际应该从 SessionCoordinator 传入
+                                sessionId: sessionId,
                                 activityType: Int(activityType.rawValue)
                             )
-                            completion(true, nil) // 假设成功，实际应该等待 watch 端确认
+                            // 使用 WCSession 作为兜底，假设成功
+                            // 实际应该等待 watch 端确认，但为了不阻塞，先返回成功
+                            completion(true, nil)
                         } else {
                             print("Watch is not reachable via WCSession")
-                            completion(false, error)
+                            // Watch 不可达，但不影响本地训练，返回成功
+                            // 用户仍然可以在 iPhone 上记录训练
+                            completion(true, nil)
                         }
                     }
                 }
