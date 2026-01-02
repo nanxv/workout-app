@@ -9,7 +9,6 @@ import SwiftUI
 import SwiftData
 #if os(iOS)
 import HealthKit
-import UIKit
 #endif
 
 enum HistoryFilter: String, CaseIterable {
@@ -26,7 +25,6 @@ struct HistoryView: View {
     @StateObject private var importManager = HealthImportManager.shared
     @State private var isImporting = false
     @State private var showNRCGuide = false
-    @State private var showFirstTimeNRCGuide = false
     
     var body: some View {
         NavigationStack {
@@ -77,20 +75,6 @@ struct HistoryView: View {
             .sheet(isPresented: $showNRCGuide) {
                 NRCSetupGuideView()
             }
-            .sheet(isPresented: $showFirstTimeNRCGuide) {
-                PermissionGuideView(permissionType: .nrc)
-            }
-            .onAppear {
-                // 首次进入 Cardio 分段时显示引导
-                if selectedFilter == .cardio && externalWorkouts.isEmpty {
-                    // 检查是否已经显示过引导
-                    let hasShownGuide = UserDefaults.standard.bool(forKey: "hasShownNRCGuide")
-                    if !hasShownGuide {
-                        showFirstTimeNRCGuide = true
-                        UserDefaults.standard.set(true, forKey: "hasShownNRCGuide")
-                    }
-                }
-            }
         }
     }
     
@@ -113,8 +97,23 @@ struct HistoryView: View {
     
     private var cardioSection: some View {
         Section("Cardio (Health Import)") {
-            ForEach(externalWorkouts) { workout in
-                ExternalWorkoutRowView(workout: workout)
+            if externalWorkouts.isEmpty {
+                VStack(spacing: 12) {
+                    Text("暂无跑步记录")
+                        .foregroundColor(.secondary)
+                    Button("导入跑步记录") {
+                        Task {
+                            await importRunningWorkouts()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+            } else {
+                ForEach(externalWorkouts) { workout in
+                    ExternalWorkoutRowView(workout: workout)
+                }
             }
         }
     }
@@ -192,10 +191,10 @@ struct SessionRowView: View {
 struct SessionDetailView: View {
     let session: Session
     @Environment(\.modelContext) private var modelContext
-    @State private var showPermissionGuide: PermissionType?
     #if os(iOS)
     @StateObject private var calendarManager = CalendarManager.shared
-    @StateObject private var watchLauncher = WatchWorkoutLauncher.shared
+    @State private var showPermissionGuide: PermissionType?
+    @State private var showRetryAlert = false
     #endif
     
     var body: some View {
@@ -245,11 +244,9 @@ struct SessionDetailView: View {
                                     .foregroundColor(.secondary)
                             }
                             #if os(iOS)
-                            Button("重试") {
-                                retryHealthSync()
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            Text("（训练时 Watch 未连接）")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                             #endif
                         }
                     }
@@ -275,7 +272,7 @@ struct SessionDetailView: View {
                                     .foregroundColor(.secondary)
                             }
                             #if os(iOS)
-                            Button("重试") {
+                            Button("添加") {
                                 retryCalendarAdd()
                             }
                             .buttonStyle(.bordered)
@@ -304,18 +301,7 @@ struct SessionDetailView: View {
     }
     
     #if os(iOS)
-    private func retryHealthSync() {
-        // 重试写入 HealthKit（通过 Watch）
-        // 注意：这需要重新启动 workout，实际实现可能需要更复杂的逻辑
-        watchLauncher.startWatchWorkout(sessionId: session.id) { success, error in
-            if !success {
-                showPermissionGuide = .healthKit
-            }
-        }
-    }
-    
     private func retryCalendarAdd() {
-        // 获取当前视图控制器来展示日历编辑界面
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootViewController = windowScene.windows.first?.rootViewController else {
             showPermissionGuide = .calendar
@@ -333,6 +319,10 @@ struct SessionDetailView: View {
         ) { eventId in
             if eventId == nil {
                 showPermissionGuide = .calendar
+            } else {
+                // 保存成功，更新 session
+                session.calendarEventId = eventId
+                try? modelContext.save()
             }
         }
     }

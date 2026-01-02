@@ -26,7 +26,7 @@ jobs:
             -sdk iphonesimulator \
             -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 15' \
-            clean build | xcpretty || exit 0
+            clean build | xcpretty || exit 1
       
       - name: Build watchOS
         run: |
@@ -35,9 +35,11 @@ jobs:
             -sdk watchsimulator \
             -configuration Debug \
             -destination 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm)' \
-            clean build | xcpretty || exit 0
+            clean build | xcpretty || exit 1
       
       - name: Check build artifacts
         run: |
           echo "Build completed successfully"
+          ls -la ~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug-iphonesimulator/ 2>/dev/null || echo "No iOS build artifacts found"
+          ls -la ~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug-watchsimulator/ 2>/dev/null || echo "No watchOS build artifacts found"
 

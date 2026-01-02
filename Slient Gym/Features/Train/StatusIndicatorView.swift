@@ -8,108 +8,126 @@
 import SwiftUI
 #if os(iOS)
 import HealthKit
-#endif
 
 struct StatusIndicatorView: View {
     @StateObject private var watchConnectivity = WatchConnectivityManager.shared
-    @StateObject private var healthManager = HealthImportManager.shared
+    @StateObject private var healthManager = HealthStatusManager.shared
+    @State private var showPermissionGuide: PermissionType?
     
     var body: some View {
         HStack(spacing: 16) {
             // Watch 连接状态
-            WatchStatusIndicator()
+            WatchStatusIndicator(
+                isPaired: watchConnectivity.isWatchPaired,
+                isReachable: watchConnectivity.isWatchReachable,
+                isInstalled: watchConnectivity.isWatchAppInstalled
+            )
             
             // Health 授权状态
-            HealthStatusIndicator()
+            HealthStatusIndicator(
+                authorizationStatus: healthManager.authorizationStatus,
+                onTap: {
+                    if healthManager.authorizationStatus != .sharingAuthorized {
+                        showPermissionGuide = .healthKit
+                    }
+                }
+            )
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(Color(.systemGray6))
-        .cornerRadius(8)
+        .sheet(item: $showPermissionGuide) { permissionType in
+            PermissionGuideView(permissionType: permissionType)
+        }
     }
 }
 
 struct WatchStatusIndicator: View {
-    @StateObject private var watchConnectivity = WatchConnectivityManager.shared
+    let isPaired: Bool
+    let isReachable: Bool
+    let isInstalled: Bool
+    
+    var status: (color: Color, icon: String, text: String) {
+        if isPaired && isInstalled && isReachable {
+            return (.green, "applewatch", "Watch 已连接")
+        } else if isPaired && isInstalled {
+            return (.orange, "applewatch", "Watch 不可达")
+        } else if isPaired {
+            return (.orange, "applewatch.slash", "Watch 未安装")
+        } else {
+            return (.gray, "applewatch.slash", "未配对")
+        }
+    }
     
     var body: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 8, height: 8)
-            Text("Watch")
+        HStack(spacing: 6) {
+            Image(systemName: status.icon)
+                .foregroundColor(status.color)
                 .font(.caption)
-            Text(statusText)
-                .font(.caption2)
+            Text(status.text)
+                .font(.caption)
                 .foregroundColor(.secondary)
-        }
-    }
-    
-    private var statusColor: Color {
-        if watchConnectivity.isWatchReachable {
-            return .green
-        } else if watchConnectivity.isWatchPaired {
-            return .orange
-        } else {
-            return .gray
-        }
-    }
-    
-    private var statusText: String {
-        if watchConnectivity.isWatchReachable {
-            return "已连接"
-        } else if watchConnectivity.isWatchPaired {
-            return "已配对"
-        } else {
-            return "未连接"
         }
     }
 }
 
 struct HealthStatusIndicator: View {
-    @StateObject private var healthManager = HealthImportManager.shared
+    let authorizationStatus: HKAuthorizationStatus
+    let onTap: () -> Void
+    
+    var status: (color: Color, icon: String, text: String) {
+        switch authorizationStatus {
+        case .sharingAuthorized:
+            return (.green, "heart.fill", "Health 已授权")
+        case .notDetermined:
+            return (.gray, "heart.slash", "Health 未授权")
+        case .sharingDenied:
+            return (.orange, "heart.slash.fill", "Health 已拒绝")
+        @unknown default:
+            return (.gray, "heart.slash", "未知状态")
+        }
+    }
     
     var body: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 8, height: 8)
-            Text("Health")
-                .font(.caption)
-            Text(statusText)
-                .font(.caption2)
-                .foregroundColor(.secondary)
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Image(systemName: status.icon)
+                    .foregroundColor(status.color)
+                    .font(.caption)
+                Text(status.text)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
-    }
-    
-    private var statusColor: Color {
-        switch healthManager.authorizationStatus {
-        case .sharingAuthorized:
-            return .green
-        case .sharingDenied:
-            return .orange
-        case .notDetermined:
-            return .gray
-        @unknown default:
-            return .gray
-        }
-    }
-    
-    private var statusText: String {
-        switch healthManager.authorizationStatus {
-        case .sharingAuthorized:
-            return "已授权"
-        case .sharingDenied:
-            return "已拒绝"
-        case .notDetermined:
-            return "未授权"
-        @unknown default:
-            return "未知"
-        }
+        .buttonStyle(.plain)
     }
 }
 
-#Preview {
-    StatusIndicatorView()
+@MainActor
+class HealthStatusManager: ObservableObject {
+    static let shared = HealthStatusManager()
+    
+    @Published var authorizationStatus: HKAuthorizationStatus = .notDetermined
+    
+    private let healthStore = HKHealthStore()
+    
+    private init() {
+        checkAuthorizationStatus()
+    }
+    
+    func checkAuthorizationStatus() {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            authorizationStatus = .notDetermined
+            return
+        }
+        
+        let workoutType = HKObjectType.workoutType()
+        authorizationStatus = healthStore.authorizationStatus(for: workoutType)
+    }
+    
+    func refresh() {
+        checkAuthorizationStatus()
+    }
 }
+#endif
 
