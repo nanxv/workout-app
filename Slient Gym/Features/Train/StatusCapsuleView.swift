@@ -28,21 +28,21 @@ struct StatusCapsuleView: View {
                 // 紧凑胶囊
                 HStack(spacing: 12) {
                     // Watch 状态点
-                    StatusDot(
+                    StatusCapsuleDot(
                         color: watchStatusColor,
                         icon: "applewatch",
                         onTap: { isExpanded.toggle() }
                     )
                     
                     // Health 状态点
-                    StatusDot(
+                    StatusCapsuleDot(
                         color: healthStatusColor,
                         icon: "heart.fill",
                         onTap: { isExpanded.toggle() }
                     )
                     
                     // Calendar 状态点
-                    StatusDot(
+                    StatusCapsuleDot(
                         color: calendarStatusColor,
                         icon: "calendar",
                         onTap: { isExpanded.toggle() }
@@ -301,7 +301,7 @@ struct StatusCapsuleView: View {
     }
 }
 
-struct StatusDot: View {
+struct StatusCapsuleDot: View {
     let color: Color
     let icon: String
     let onTap: () -> Void

@@ -141,12 +141,10 @@ class HealthImportManager: ObservableObject {
                 
                 let finalCount = workoutsData.count
                 
-                // 在主线程上插入和保存（使用 Task 而不是 await，因为回调是同步的）
-                // 创建局部变量避免 Sendable 警告
-                let contextToUse = context
+                // 在主线程上插入和保存
+                // 将数据库操作移到 MainActor 上，避免在 Sendable 闭包中捕获 context
                 Task { @MainActor in
                     // 在 MainActor 上操作，确保线程安全
-                    // 注意：ModelContext 不是 Sendable，但我们在 MainActor 上操作是安全的
                     for workoutData in workoutsData {
                         let externalWorkout = ExternalWorkout(
                             uuid: workoutData.0,
@@ -160,11 +158,11 @@ class HealthImportManager: ObservableObject {
                             sourceBundleId: workoutData.8,
                             importedAt: Date()
                         )
-                        contextToUse.insert(externalWorkout)
+                        context.insert(externalWorkout)
                     }
                     
                     do {
-                        try contextToUse.save()
+                        try context.save()
                         self.lastImportDate = Date()
                         print("Imported \(finalCount) running workouts")
                         continuation.resume(returning: finalCount)
