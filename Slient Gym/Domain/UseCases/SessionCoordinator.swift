@@ -197,7 +197,8 @@ class SessionCoordinator: ObservableObject {
             reps: reps,
             rir: rir,
             restSecondsUsed: 0, // Will be updated when rest ends
-            note: note
+            note: note,
+            isCompleted: true
         )
         
         modelContext.insert(setEntry)

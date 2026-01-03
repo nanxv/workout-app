@@ -20,6 +20,10 @@ final class RoutineExercise {
     var repTargetLow: Int?
     var repTargetHigh: Int?
     
+    // Wireframe 扩展：支持时长和重量
+    var holdSecDefault: Int?  // 计时动作的默认时长（秒）
+    var weightKgDefault: Double?  // 默认重量（公斤）
+    
     /// 计算属性：返回目标次数（如果有范围则返回平均值）
     var repTarget: Int? {
         if let low = repTargetLow, let high = repTargetHigh {
@@ -32,6 +36,11 @@ final class RoutineExercise {
         return nil
     }
     
+    /// 判断是否为计时动作（holdSec 优先于 reps）
+    var isHoldType: Bool {
+        return holdSecDefault != nil && repTarget == nil
+    }
+    
     init(
         id: UUID = UUID(),
         routine: Routine? = nil,
@@ -41,7 +50,9 @@ final class RoutineExercise {
         restSecondsDefault: Int,
         tempoDefault: String? = nil,
         repTargetLow: Int? = nil,
-        repTargetHigh: Int? = nil
+        repTargetHigh: Int? = nil,
+        holdSecDefault: Int? = nil,
+        weightKgDefault: Double? = nil
     ) {
         self.id = id
         self.routine = routine
@@ -52,6 +63,8 @@ final class RoutineExercise {
         self.tempoDefault = tempoDefault
         self.repTargetLow = repTargetLow
         self.repTargetHigh = repTargetHigh
+        self.holdSecDefault = holdSecDefault
+        self.weightKgDefault = weightKgDefault
     }
 }
 

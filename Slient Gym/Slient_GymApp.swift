@@ -31,7 +31,8 @@ struct Slient_GymApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            // 使用新的 Wireframe 版本（基于设计稿）
+            MainTabViewWireframe()
                 .task {
                     // Generate sample data on first launch (async, non-blocking)
                     Task.detached(priority: .userInitiated) {

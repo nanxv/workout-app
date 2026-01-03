@@ -21,16 +21,24 @@ final class SetEntry {
     var note: String?
     var timestamp: Date
     
+    // Wireframe 扩展：支持时长和重量
+    var holdSec: Int?  // 计时动作的时长（秒）
+    var weightKg: Double?  // 重量（公斤）
+    var isCompleted: Bool  // 是否完成（用于勾选）
+    
     init(
         id: UUID = UUID(),
         sessionExercise: SessionExercise? = nil,
         setIndex: Int,
-        reps: Int,
-        rir: Int,
-        restSecondsUsed: Int,
+        reps: Int = 0,
+        rir: Int = 0,
+        restSecondsUsed: Int = 0,
         tempo: String? = nil,
         note: String? = nil,
-        timestamp: Date = Date()
+        timestamp: Date = Date(),
+        holdSec: Int? = nil,
+        weightKg: Double? = nil,
+        isCompleted: Bool = false
     ) {
         self.id = id
         self.sessionExercise = sessionExercise
@@ -41,6 +49,9 @@ final class SetEntry {
         self.tempo = tempo
         self.note = note
         self.timestamp = timestamp
+        self.holdSec = holdSec
+        self.weightKg = weightKg
+        self.isCompleted = isCompleted
     }
 }
 
