@@ -367,6 +367,7 @@ struct RoutineDayCardWireframe: View {
     let onDuplicate: () -> Void
     
     @State private var isExpanded = true
+    @State private var showCalendarSheet = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -399,6 +400,9 @@ struct RoutineDayCardWireframe: View {
                     .foregroundColor(.secondary)
                 
                 HStack(spacing: 4) {
+                    IconButton(title: "添加到日历", icon: "calendar.badge.plus") {
+                        showCalendarSheet = true
+                    }
                     IconButton(title: "上移", icon: "arrow.up") {
                         onMoveUp()
                     }

@@ -127,6 +127,117 @@ class CalendarManager: NSObject, ObservableObject {
         return "训练"
     }
     
+    /// 创建训练计划事件（用于提前安排训练）
+    /// - Parameters:
+    ///   - routine: 训练计划 Routine
+    ///   - startDate: 计划的开始日期和时间
+    ///   - presentingViewController: 用于展示 EKEventEditViewController 的视图控制器
+    ///   - completion: 完成回调，返回创建的 eventId
+    func createEventForRoutine(
+        routine: Routine,
+        startDate: Date,
+        presentingViewController: UIViewController,
+        completion: @escaping (String?) -> Void
+    ) {
+        Task {
+            // 检查权限
+            guard await requestAccess() else {
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
+                return
+            }
+            
+            // 估算训练时长（分钟）
+            let estimatedMinutes = estimateRoutineDuration(routine: routine)
+            let endDate = startDate.addingTimeInterval(TimeInterval(estimatedMinutes * 60))
+            
+            // 创建事件
+            let event = EKEvent(eventStore: eventStore)
+            event.title = "训练 - \(routine.name)"
+            event.startDate = startDate
+            event.endDate = endDate
+            event.notes = generateRoutineNotes(routine: routine)
+            event.calendar = defaultCalendar ?? eventStore.defaultCalendarForNewEvents
+            
+            // 使用 EKEventEditViewController 让用户确认和编辑
+            DispatchQueue.main.async {
+                let eventEditViewController = EKEventEditViewController()
+                eventEditViewController.eventStore = self.eventStore
+                eventEditViewController.event = event
+                eventEditViewController.editViewDelegate = self
+                
+                // 保存 completion handler
+                self.pendingCompletion = completion
+                self.presentingViewController = presentingViewController
+                
+                // 展示编辑界面
+                presentingViewController.present(eventEditViewController, animated: true)
+            }
+        }
+    }
+    
+    /// 估算训练计划时长（分钟）
+    private func estimateRoutineDuration(routine: Routine) -> Int {
+        guard let exercises = routine.exercises else { return 60 }
+        
+        var totalSeconds = 0
+        for re in exercises {
+            let exerciseTime: Int
+            if re.isHoldType, let holdSec = re.holdSecDefault {
+                // 计时动作：组数 × (时长 + 休息)
+                exerciseTime = re.targetSets * (holdSec + re.restSecondsDefault)
+            } else {
+                // 计次动作：假设每次 rep 6 秒
+                let repTime = 6
+                let reps = re.repTarget ?? 10
+                exerciseTime = re.targetSets * (re.restSecondsDefault + reps * repTime)
+            }
+            totalSeconds += exerciseTime
+        }
+        
+        // 转换为分钟，最少 20 分钟，最多 120 分钟
+        return max(20, min(120, totalSeconds / 60))
+    }
+    
+    /// 生成训练计划备注
+    private func generateRoutineNotes(routine: Routine) -> String {
+        var notes: [String] = []
+        notes.append("训练计划: \(routine.name)")
+        
+        if let exercises = routine.exercises?.sorted(by: { $0.order < $1.order }) {
+            notes.append("")
+            notes.append("动作:")
+            for re in exercises {
+                let exerciseName = re.exercise?.name ?? "未知动作"
+                var detail = "  - \(exerciseName): \(re.targetSets)组"
+                
+                if re.isHoldType, let holdSec = re.holdSecDefault {
+                    detail += " × \(holdSec)秒"
+                } else if let repTarget = re.repTarget {
+                    detail += " × \(repTarget)次"
+                }
+                
+                detail += "，休息 \(re.restSecondsDefault)秒"
+                notes.append(detail)
+            }
+        }
+        
+        let estimatedMinutes = estimateRoutineDuration(routine: routine)
+        notes.append("")
+        notes.append("预计时长: 约 \(estimatedMinutes) 分钟")
+        
+        return notes.joined(separator: "\n")
+    }
+    
+    /// 生成事件标题
+    private func generateEventTitle(for session: Session) -> String {
+        if let routineName = session.routine?.name {
+            return "训练 - \(routineName)"
+        }
+        return "训练"
+    }
+    
     /// 生成事件备注
     private func generateEventNotes(for session: Session) -> String {
         var notes: [String] = []
