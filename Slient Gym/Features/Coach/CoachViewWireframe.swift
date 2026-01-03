@@ -180,10 +180,6 @@ struct ChatBubbleWireframe: View {
     }
 }
 
-struct ChatMessage: Identifiable {
-    let id = UUID()
-    let content: String
-    let isUser: Bool
-    let timestamp = Date()
-}
+// ChatMessage 已在 CoachView.swift 中定义，这里使用相同的类型
+// 如果需要不同的实现，可以重命名为 CoachChatMessage
 
