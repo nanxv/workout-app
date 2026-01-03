@@ -13,11 +13,13 @@ enum PermissionType: Identifiable {
         case .healthKit: return "healthKit"
         case .calendar: return "calendar"
         case .nrc: return "nrc"
+        case .watch: return "watch"
         }
     }
     case healthKit
     case calendar
     case nrc
+    case watch
     
     var title: String {
         switch self {
@@ -27,6 +29,8 @@ enum PermissionType: Identifiable {
             return "需要日历权限"
         case .nrc:
             return "导入 Nike Run Club 跑步记录"
+        case .watch:
+            return "Apple Watch 连接问题"
         }
     }
     
@@ -75,6 +79,19 @@ enum PermissionType: Identifiable {
             
             设置完成后，返回此应用，点击"导入跑步记录"即可。
             """
+        case .watch:
+            return """
+            Apple Watch 未连接或未安装应用。
+            
+            请按以下步骤检查：
+            
+            1. 确保 Apple Watch 已配对
+            2. 在 Watch App 中安装 "Silent Gym" 应用
+            3. 确保 Watch 在蓝牙范围内
+            4. 重启 Watch 应用（如需要）
+            
+            注意：即使没有 Watch，您仍然可以在 iPhone 上完整记录训练。
+            """
         }
     }
     
@@ -86,7 +103,7 @@ enum PermissionType: Identifiable {
                 return URL(string: "x-apple-health://")
             }
             return URL(string: UIApplication.openSettingsURLString)
-        case .calendar, .nrc:
+        case .calendar, .nrc, .watch:
             return URL(string: UIApplication.openSettingsURLString)
         }
     }

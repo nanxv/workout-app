@@ -9,6 +9,7 @@ import SwiftUI
 import Combine
 #if os(iOS)
 import HealthKit
+import EventKit
 
 struct StatusCapsuleView: View {
     @StateObject private var watchConnectivity = WatchConnectivityManager.shared
@@ -103,8 +104,15 @@ struct StatusCapsuleView: View {
                             color: calendarStatusColor,
                             actionTitle: calendarActionTitle,
                             action: {
-                                if calendarManager.authorizationStatus != .authorized && calendarManager.authorizationStatus != .fullAccess {
-                                    showPermissionGuide = .calendar
+                                let status = calendarManager.authorizationStatus
+                                if #available(iOS 17.0, *) {
+                                    if status != .fullAccess {
+                                        showPermissionGuide = .calendar
+                                    }
+                                } else {
+                                    if status != .authorized {
+                                        showPermissionGuide = .calendar
+                                    }
                                 }
                             }
                         )
@@ -207,34 +215,71 @@ struct StatusCapsuleView: View {
     // MARK: - Calendar Status
     
     private var calendarStatusColor: Color {
-        switch calendarManager.authorizationStatus {
-        case .authorized, .fullAccess:
-            return .green
-        case .notDetermined:
-            return .gray
-        case .denied, .restricted, .writeOnly:
-            return .orange
-        @unknown default:
-            return .gray
+        let status = calendarManager.authorizationStatus
+        if #available(iOS 17.0, *) {
+            switch status {
+            case .fullAccess:
+                return .green
+            case .notDetermined:
+                return .gray
+            case .denied, .restricted, .writeOnly:
+                return .orange
+            @unknown default:
+                return .gray
+            }
+        } else {
+            // iOS 16 and earlier
+            switch status {
+            case .authorized:
+                return .green
+            case .notDetermined:
+                return .gray
+            case .denied, .restricted:
+                return .orange
+            @unknown default:
+                return .gray
+            }
         }
     }
     
     private var calendarStatusText: String {
-        switch calendarManager.authorizationStatus {
-        case .authorized, .fullAccess:
-            return "已授权"
-        case .notDetermined:
-            return "未授权"
-        case .denied, .restricted, .writeOnly:
-            return "已拒绝"
-        @unknown default:
-            return "未知"
+        let status = calendarManager.authorizationStatus
+        if #available(iOS 17.0, *) {
+            switch status {
+            case .fullAccess:
+                return "已授权"
+            case .notDetermined:
+                return "未授权"
+            case .denied, .restricted, .writeOnly:
+                return "已拒绝"
+            @unknown default:
+                return "未知"
+            }
+        } else {
+            // iOS 16 and earlier
+            switch status {
+            case .authorized:
+                return "已授权"
+            case .notDetermined:
+                return "未授权"
+            case .denied, .restricted:
+                return "已拒绝"
+            @unknown default:
+                return "未知"
+            }
         }
     }
     
     private var calendarActionTitle: String? {
-        if calendarManager.authorizationStatus != .authorized && calendarManager.authorizationStatus != .fullAccess {
-            return "去授权"
+        let status = calendarManager.authorizationStatus
+        if #available(iOS 17.0, *) {
+            if status != .fullAccess {
+                return "去授权"
+            }
+        } else {
+            if status != .authorized {
+                return "去授权"
+            }
         }
         return nil
     }
