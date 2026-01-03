@@ -123,7 +123,7 @@ struct ExercisePlanRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // 动作名称
-            Text(routineExercise.exercise?.name ?? "Unknown")
+            Text(routineExercise.exercise?.name ?? "未知")
                 .font(.subheadline)
                 .fontWeight(.semibold)
             

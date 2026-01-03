@@ -304,7 +304,7 @@ struct ConfirmActionSheet: View {
         case .endSession:
             return "End current training session?"
         case .addToCalendar:
-            return "Add this session to calendar?"
+            return "将此训练添加到日历？"
         default:
             return "Execute this action?"
         }
