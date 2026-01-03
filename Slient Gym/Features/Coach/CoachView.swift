@@ -179,12 +179,12 @@ struct CoachView: View {
                 if let session = try? modelContext.fetch(descriptor).first {
                     addSessionToCalendar(session: session)
                 } else {
-                    messages.append(ChatMessage(content: "Session not found", isUser: false))
+                    messages.append(ChatMessage(content: "未找到训练记录", isUser: false))
                 }
             } else if let currentSession = sessionCoordinator.currentSession {
                 addSessionToCalendar(session: currentSession)
             } else {
-                messages.append(ChatMessage(content: "No active session to add to calendar", isUser: false))
+                messages.append(ChatMessage(content: "没有活动训练可添加到日历", isUser: false))
             }
             
         case .summarize(let period):
@@ -271,7 +271,7 @@ struct ConfirmActionSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-                Text("Confirm Action")
+                Text("确认操作")
                     .font(.title2)
                     .bold()
                 
@@ -280,12 +280,12 @@ struct ConfirmActionSheet: View {
                     .padding()
                 
                 HStack(spacing: 20) {
-                    Button("Cancel", role: .cancel) {
+                    Button("取消", role: .cancel) {
                         onCancel()
                     }
                     .buttonStyle(.bordered)
                     
-                    Button("Confirm") {
+                    Button("确认") {
                         onConfirm()
                     }
                     .buttonStyle(.borderedProminent)
@@ -300,13 +300,13 @@ struct ConfirmActionSheet: View {
     private var actionDescription: String {
         switch action {
         case .startRoutine(let name):
-            return "Start routine: \(name)?"
+            return "开始训练计划：\(name)？"
         case .endSession:
-            return "End current training session?"
+            return "结束当前训练？"
         case .addToCalendar:
             return "将此训练添加到日历？"
         default:
-            return "Execute this action?"
+            return "执行此操作？"
         }
     }
 }
