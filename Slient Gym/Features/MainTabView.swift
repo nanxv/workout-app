@@ -12,27 +12,27 @@ struct MainTabView: View {
         TabView {
             TrainView()
                 .tabItem {
-                    Label("Train", systemImage: "dumbbell.fill")
+                    Label("训练", systemImage: "dumbbell.fill")
                 }
             
             RoutinesView()
                 .tabItem {
-                    Label("Routines", systemImage: "list.bullet")
+                    Label("计划", systemImage: "list.bullet")
                 }
             
             HistoryView()
                 .tabItem {
-                    Label("History", systemImage: "clock.fill")
+                    Label("历史", systemImage: "clock.fill")
                 }
             
             ProgressView()
                 .tabItem {
-                    Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
+                    Label("进度", systemImage: "chart.line.uptrend.xyaxis")
                 }
             
             CoachView()
                 .tabItem {
-                    Label("Coach", systemImage: "message.fill")
+                    Label("教练", systemImage: "message.fill")
                 }
         }
     }

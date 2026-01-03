@@ -22,13 +22,13 @@ struct ProgressView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Progress")
+            .navigationTitle("进度")
         }
     }
     
     private var weeklySummarySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("This Week")
+            Text("本周")
                 .font(.title2)
                 .bold()
             
@@ -36,16 +36,16 @@ struct ProgressView: View {
             
             VStack(spacing: 12) {
                 HStack(spacing: 20) {
-                    StatCard(title: "Strength", value: "\(weekStats.strengthMinutes) min", icon: "dumbbell.fill")
-                    StatCard(title: "Cardio", value: "\(weekStats.cardioMinutes) min", icon: "figure.run")
-                    StatCard(title: "Sessions", value: "\(weekStats.totalSessions)", icon: "calendar")
+                    StatCard(title: "力量", value: "\(weekStats.strengthMinutes) 分钟", icon: "dumbbell.fill")
+                    StatCard(title: "有氧", value: "\(weekStats.cardioMinutes) 分钟", icon: "figure.run")
+                    StatCard(title: "训练次数", value: "\(weekStats.totalSessions)", icon: "calendar")
                 }
                 
                 if weekStats.totalDistance > 0 {
                     HStack {
                         Image(systemName: "map.fill")
                             .foregroundColor(.blue)
-                        Text("Total Distance: \(String(format: "%.2f", weekStats.totalDistance)) km")
+                        Text("总距离: \(String(format: "%.2f", weekStats.totalDistance)) 公里")
                             .font(.subheadline)
                     }
                     .padding()
@@ -62,7 +62,7 @@ struct ProgressView: View {
     
     private var exerciseTrendsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Exercise Trends")
+            Text("动作趋势")
                 .font(.title2)
                 .bold()
             
@@ -168,7 +168,7 @@ struct ExerciseTrendCard: View {
             
             HStack {
                 VStack(alignment: .leading) {
-                    Text("Best Reps")
+                    Text("最佳次数")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Text("\(stats.bestReps)")
@@ -179,7 +179,7 @@ struct ExerciseTrendCard: View {
                 Spacer()
                 
                 VStack(alignment: .trailing) {
-                    Text("Total Reps")
+                    Text("总次数")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Text("\(stats.totalReps)")
@@ -190,7 +190,7 @@ struct ExerciseTrendCard: View {
                 Spacer()
                 
                 VStack(alignment: .trailing) {
-                    Text("Avg RIR")
+                    Text("平均 RIR")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Text(String(format: "%.1f", stats.avgRIR))

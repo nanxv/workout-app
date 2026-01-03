@@ -49,7 +49,7 @@ struct TrainView: View {
                 case .starting:
                     VStack {
                         ProgressView()
-                        Text("Starting...")
+                        Text("正在启动...")
                     }
                 case .running(let sessionId, let exerciseIndex, let setIndex):
                     trainingView(sessionId: sessionId, exerciseIndex: exerciseIndex, setIndex: setIndex)
@@ -59,25 +59,25 @@ struct TrainView: View {
                     trainingView(sessionId: sessionId, exerciseIndex: sessionCoordinator.currentExerciseIndex, setIndex: sessionCoordinator.currentSetIndex)
                         .overlay(restTimerOverlay(remaining: remaining))
                 case .paused:
-                    Text("Paused")
+                    Text("已暂停")
                 case .ending:
                     VStack {
                         ProgressView()
-                        Text("Ending session...")
+                        Text("正在结束训练...")
                     }
                 case .finished:
                     routineSelectionView
                 case .error(let message):
                     VStack {
-                        Text("Error: \(message)")
-                        Button("Back") {
+                        Text("错误: \(message)")
+                        Button("返回") {
                             sessionCoordinator.state = .idle
                         }
                     }
                     }
                 }
             }
-            .navigationTitle("Train")
+            .navigationTitle("训练")
         }
         .onAppear {
             // Update sessionCoordinator with actual modelContext
@@ -107,15 +107,15 @@ struct TrainView: View {
     
     private var routineSelectionView: some View {
         VStack(spacing: 20) {
-            Text("Select Routine")
+            Text("选择训练计划")
                 .font(.title2)
                 .padding()
             
             if routines.isEmpty {
                 VStack(spacing: 12) {
-                    Text("No routines available")
+                    Text("暂无训练计划")
                         .foregroundColor(.secondary)
-                    Text("Please check if sample data was generated")
+                    Text("请检查示例数据是否已生成")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -176,21 +176,21 @@ struct TrainView: View {
                 
                 VStack(spacing: 20) {
                     // Exercise name
-                    Text(exercise?.name ?? "Unknown")
+                    Text(exercise?.name ?? "未知动作")
                         .font(.largeTitle)
                         .bold()
                         .padding()
                     
                     // Set progress
-                    Text("Set \(setIndex + 1) of \(targetSets)")
+                    Text("第 \(setIndex + 1) 组 / 共 \(targetSets) 组")
                         .font(.title3)
                         .foregroundColor(.secondary)
                     
                     // Reps input
                     VStack(alignment: .leading) {
-                        Text("Reps")
+                        Text("次数")
                             .font(.headline)
-                        TextField("Enter reps", text: $currentReps)
+                        TextField("输入次数", text: $currentReps)
                             .keyboardType(.numberPad)
                             .textFieldStyle(.roundedBorder)
                             .font(.title2)
@@ -199,7 +199,7 @@ struct TrainView: View {
                     
                     // RIR input
                     VStack(alignment: .leading) {
-                        Text("RIR (Reps in Reserve)")
+                        Text("RIR (保留次数)")
                             .font(.headline)
                         Picker("RIR", selection: $currentRIR) {
                             ForEach(0...4, id: \.self) { value in
@@ -218,7 +218,7 @@ struct TrainView: View {
                             currentRIR = 1
                         }
                     }) {
-                        Text("Complete Set")
+                        Text("完成一组")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -235,7 +235,7 @@ struct TrainView: View {
                     Button(action: {
                         sessionCoordinator.endSession()
                     }) {
-                        Text("End Session")
+                        Text("结束训练")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -246,7 +246,7 @@ struct TrainView: View {
                     .padding()
                 }
             } else {
-                Text("No active exercise")
+                Text("无活动动作")
             }
         }
     }
@@ -257,11 +257,11 @@ struct TrainView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 30) {
-                Text("Rest")
+                Text("休息")
                     .font(.largeTitle)
                     .foregroundColor(.white)
                 
-                Text("\(restTimer.remainingSeconds)s")
+                Text("\(restTimer.remainingSeconds)秒")
                     .font(.system(size: 72, weight: .bold))
                     .foregroundColor(.white)
                 
@@ -270,7 +270,7 @@ struct TrainView: View {
                         sessionCoordinator.extendRest(by: 15)
                         restTimer.extend(by: 15)
                     }) {
-                        Text("+15s")
+                        Text("+15秒")
                             .foregroundColor(.white)
                             .padding()
                             .background(Color.blue.opacity(0.7))
@@ -281,7 +281,7 @@ struct TrainView: View {
                         sessionCoordinator.extendRest(by: 30)
                         restTimer.extend(by: 30)
                     }) {
-                        Text("+30s")
+                        Text("+30秒")
                             .foregroundColor(.white)
                             .padding()
                             .background(Color.blue.opacity(0.7))
@@ -292,7 +292,7 @@ struct TrainView: View {
                         sessionCoordinator.skipRest()
                         restTimer.skip()
                     }) {
-                        Text("Skip")
+                        Text("跳过")
                             .foregroundColor(.white)
                             .padding()
                             .background(Color.red.opacity(0.7))

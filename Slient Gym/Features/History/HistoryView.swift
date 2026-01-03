@@ -12,9 +12,9 @@ import HealthKit
 #endif
 
 enum HistoryFilter: String, CaseIterable {
-    case all = "All"
-    case strength = "Strength"
-    case cardio = "Cardio"
+    case all = "全部"
+    case strength = "力量"
+    case cardio = "有氧"
 }
 
 struct HistoryView: View {
@@ -55,7 +55,7 @@ struct HistoryView: View {
                     }
                 }
             }
-            .navigationTitle("History")
+            .navigationTitle("历史")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
@@ -64,14 +64,14 @@ struct HistoryView: View {
                                 await importRunningWorkouts()
                             }
                         }) {
-                            Label("Import Running", systemImage: "arrow.down.circle")
+                            Label("导入跑步记录", systemImage: "arrow.down.circle")
                         }
                         .disabled(isImporting)
                         
                         Button(action: {
                             showNRCGuide = true
                         }) {
-                            Label("NRC Setup Guide", systemImage: "questionmark.circle")
+                            Label("NRC 设置指南", systemImage: "questionmark.circle")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -92,7 +92,7 @@ struct HistoryView: View {
     }
     
     private var strengthSection: some View {
-        Section("Strength Training") {
+        Section("力量训练") {
             ForEach(filteredSessions) { session in
                 NavigationLink(destination: SessionDetailView(session: session)) {
                     SessionRowView(session: session)
@@ -138,7 +138,7 @@ struct SessionRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(session.routine?.name ?? "Unknown Routine")
+                Text(session.routine?.name ?? "未知训练计划")
                     .font(.headline)
                 Spacer()
                 // 状态图标
@@ -175,7 +175,7 @@ struct SessionRowView: View {
             }
             
             if let exercises = session.exercises, !exercises.isEmpty {
-                Text("\(exercises.count) exercises")
+                Text("\(exercises.count) 个动作")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -201,27 +201,27 @@ struct SessionDetailView: View {
     
     var body: some View {
         List {
-            Section("Session Info") {
+            Section("训练信息") {
                 HStack {
-                    Text("Routine")
+                    Text("训练计划")
                     Spacer()
-                    Text(session.routine?.name ?? "Unknown")
+                    Text(session.routine?.name ?? "未知")
                 }
                 HStack {
-                    Text("Start")
+                    Text("开始时间")
                     Spacer()
                     Text(session.startAt, style: .date)
                 }
                 if let endAt = session.endAt {
                     HStack {
-                        Text("End")
+                        Text("结束时间")
                         Spacer()
                         Text(endAt, style: .date)
                     }
                 }
                 if let duration = session.duration {
                     HStack {
-                        Text("Duration")
+                        Text("训练时长")
                         Spacer()
                         Text(formatDuration(duration))
                     }
@@ -285,7 +285,7 @@ struct SessionDetailView: View {
                 }
             }
             
-            Section("Exercises") {
+            Section("动作") {
                 if let exercises = session.exercises?.sorted(by: { $0.order < $1.order }) {
                     ForEach(exercises) { sessionExercise in
                         ExerciseDetailSection(sessionExercise: sessionExercise)
@@ -293,7 +293,7 @@ struct SessionDetailView: View {
                 }
             }
         }
-        .navigationTitle("Session Details")
+        .navigationTitle("训练详情")
         .navigationBarTitleDisplayMode(.inline)
         #if os(iOS)
         .sheet(item: $showPermissionGuide) { permissionType in
@@ -342,15 +342,15 @@ struct ExerciseDetailSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(sessionExercise.exercise?.name ?? "Unknown")
+            Text(sessionExercise.exercise?.name ?? "未知")
                 .font(.headline)
             
             if let sets = sessionExercise.sets?.sorted(by: { $0.setIndex < $1.setIndex }) {
                 ForEach(sets) { set in
                     HStack {
-                        Text("Set \(set.setIndex + 1)")
+                        Text("第 \(set.setIndex + 1) 组")
                         Spacer()
-                        Text("\(set.reps) reps")
+                        Text("\(set.reps) 次")
                         Text("RIR: \(set.rir)")
                             .foregroundColor(.secondary)
                     }
@@ -368,7 +368,7 @@ struct ExternalWorkoutRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Running")
+                Text("跑步")
                     .font(.headline)
                 Spacer()
                 if let sourceName = workout.sourceName {

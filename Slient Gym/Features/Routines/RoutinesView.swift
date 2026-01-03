@@ -85,18 +85,18 @@ struct RoutineDetailView: View {
     
     var body: some View {
         Form {
-            Section("Routine Info") {
-                TextField("Name", text: $routine.name)
+            Section("训练计划信息") {
+                TextField("名称", text: $routine.name)
             }
             
-            Section("Exercises") {
+            Section("动作") {
                 if let routineExercises = routine.exercises?.sorted(by: { $0.order < $1.order }) {
                     ForEach(routineExercises) { routineExercise in
                         NavigationLink(destination: RoutineExerciseEditView(routineExercise: routineExercise)) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(routineExercise.exercise?.name ?? "Unknown")
                                     .font(.headline)
-                                Text("\(routineExercise.targetSets) sets • \(routineExercise.restSecondsDefault)s rest")
+                                Text("\(routineExercise.targetSets) 组 • 休息 \(routineExercise.restSecondsDefault) 秒")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -143,16 +143,16 @@ struct AddRoutineView: View {
             Form {
                 TextField("Routine Name", text: $name)
             }
-            .navigationTitle("New Routine")
+            .navigationTitle("新建训练计划")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("取消") {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("保存") {
                         let routine = Routine(name: name)
                         modelContext.insert(routine)
                         try? modelContext.save()
@@ -177,26 +177,26 @@ struct AddExerciseToRoutineView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Picker("Exercise", selection: $selectedExercise) {
-                    Text("Select Exercise").tag(nil as Exercise?)
+                Picker("动作", selection: $selectedExercise) {
+                    Text("选择动作").tag(nil as Exercise?)
                     ForEach(availableExercises) { exercise in
                         Text(exercise.name).tag(exercise as Exercise?)
                     }
                 }
                 
-                Stepper("Target Sets: \(targetSets)", value: $targetSets, in: 1...10)
-                Stepper("Rest (seconds): \(restSeconds)", value: $restSeconds, in: 0...300, step: 15)
+                Stepper("目标组数: \(targetSets)", value: $targetSets, in: 1...10)
+                Stepper("休息时间（秒）: \(restSeconds)", value: $restSeconds, in: 0...300, step: 15)
             }
-            .navigationTitle("Add Exercise")
+            .navigationTitle("添加动作")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("取消") {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button("添加") {
                         guard let exercise = selectedExercise else { return }
                         let order = routine.exercises?.count ?? 0
                         let routineExercise = RoutineExercise(
@@ -223,16 +223,16 @@ struct RoutineExerciseEditView: View {
     
     var body: some View {
         Form {
-            Section("Exercise") {
-                Text(routineExercise.exercise?.name ?? "Unknown")
+            Section("动作") {
+                Text(routineExercise.exercise?.name ?? "未知")
             }
             
-            Section("Configuration") {
-                Stepper("Target Sets: \(routineExercise.targetSets)", value: $routineExercise.targetSets, in: 1...10)
-                Stepper("Rest (seconds): \(routineExercise.restSecondsDefault)", value: $routineExercise.restSecondsDefault, in: 0...300, step: 15)
+            Section("配置") {
+                Stepper("目标组数: \(routineExercise.targetSets)", value: $routineExercise.targetSets, in: 1...10)
+                Stepper("休息时间（秒）: \(routineExercise.restSecondsDefault)", value: $routineExercise.restSecondsDefault, in: 0...300, step: 15)
             }
         }
-        .navigationTitle("Edit Exercise")
+        .navigationTitle("编辑动作")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

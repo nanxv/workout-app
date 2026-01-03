@@ -36,7 +36,7 @@ struct CoachView: View {
                 }
                 
                 HStack {
-                    TextField("Ask coach...", text: $inputText)
+                    TextField("询问教练...", text: $inputText)
                         .textFieldStyle(.roundedBorder)
                         .onSubmit {
                             sendMessage()
@@ -53,12 +53,12 @@ struct CoachView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Coach")
+            .navigationTitle("教练")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Toggle("AI", isOn: $useOpenAI)
                         .toggleStyle(.switch)
-                        .help("Use OpenAI (requires backend)")
+                        .help("使用 OpenAI（需要后端支持）")
                 }
             }
             .onAppear {
