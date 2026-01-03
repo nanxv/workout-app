@@ -342,14 +342,15 @@ struct ExercisePlanPreview: View {
             Text(routineExercise.exercise?.name ?? "未知动作")
                 .font(.headline)
             
-            let planText: String
-            if routineExercise.isHoldType, let holdSec = routineExercise.holdSecDefault {
-                planText = "\(routineExercise.targetSets)组 × \(holdSec)秒"
-            } else if let repTarget = routineExercise.repTarget {
-                planText = "\(routineExercise.targetSets)组 × \(repTarget)次"
-            } else {
-                planText = "\(routineExercise.targetSets)组"
-            }
+            let planText: String = {
+                if routineExercise.isHoldType, let holdSec = routineExercise.holdSecDefault {
+                    return "\(routineExercise.targetSets)组 × \(holdSec)秒"
+                } else if let repTarget = routineExercise.repTarget {
+                    return "\(routineExercise.targetSets)组 × \(repTarget)次"
+                } else {
+                    return "\(routineExercise.targetSets)组"
+                }
+            }()
             
             Text("计划：\(planText) · 休息：\(routineExercise.restSecondsDefault)秒")
                 .font(.caption)

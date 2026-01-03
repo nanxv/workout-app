@@ -36,6 +36,30 @@ class WatchWorkoutLauncher: ObservableObject {
             return
         }
         
+        // 检查 Info.plist 中是否有必需的权限描述
+        let infoPlist = Bundle.main.infoDictionary
+        let hasUpdateDescription = infoPlist?["NSHealthUpdateUsageDescription"] as? String != nil
+        
+        if !hasUpdateDescription {
+            print("⚠️ Warning: NSHealthUpdateUsageDescription not found in Info.plist")
+            print("⚠️ 请在 Xcode 的 Info 标签中添加 'Privacy - Health Update Usage Description'")
+            print("⚠️ 暂时跳过 HealthKit 写入权限请求，仅使用本地训练功能")
+            
+            // 不请求写入权限，只尝试启动 watch（如果可用）
+            let wcManager = WatchConnectivityManager.shared
+            if wcManager.isWatchReachable {
+                wcManager.sendStartWorkout(
+                    sessionId: sessionId,
+                    activityType: Int(activityType.rawValue)
+                )
+                completion(true, nil)
+            } else {
+                // 即使没有 watch，也允许本地训练继续
+                completion(true, nil)
+            }
+            return
+        }
+        
         // 请求必要的权限
         let typesToShare: Set<HKSampleType> = [HKObjectType.workoutType()]
         let typesToRead: Set<HKObjectType> = [

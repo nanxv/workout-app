@@ -37,18 +37,8 @@ struct ExerciseDetailsView: View {
                             .font(.headline)
                             .foregroundColor(.primary)
                         
-                        if let routineExercise = routineExercise {
-                            let planText = "\(routineExercise.targetSets)组"
-                            let detailText: String
-                            if routineExercise.isHoldType, let holdSec = routineExercise.holdSecDefault {
-                                detailText = "×\(holdSec)秒"
-                            } else if let repTarget = routineExercise.repTarget {
-                                detailText = "×\(repTarget)次"
-                            } else {
-                                detailText = ""
-                            }
-                            
-                            Text("计划：\(planText)\(detailText) · 休息：\(routineExercise.restSecondsDefault)秒")
+                        if let routineExercise {
+                            Text(planDescription(for: routineExercise))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -209,6 +199,19 @@ struct ExerciseDetailsView: View {
     
     private var isHoldType: Bool {
         routineExercise?.isHoldType ?? false
+    }
+    
+    private func planDescription(for routineExercise: RoutineExercise) -> String {
+        let planText = "\(routineExercise.targetSets)组"
+        let detailText: String
+        if routineExercise.isHoldType, let holdSec = routineExercise.holdSecDefault {
+            detailText = "×\(holdSec)秒"
+        } else if let repTarget = routineExercise.repTarget {
+            detailText = "×\(repTarget)次"
+        } else {
+            detailText = ""
+        }
+        return "计划：\(planText)\(detailText) · 休息：\(routineExercise.restSecondsDefault)秒"
     }
 }
 

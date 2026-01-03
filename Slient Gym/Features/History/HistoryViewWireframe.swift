@@ -224,7 +224,7 @@ struct StatBar: View {
                     
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color.black)
-                        .frame(width: max(6, min(geometry.size.width, CGFloat(value) / CGFloat(max) * geometry.size.width)), height: 8)
+                        .frame(width: Swift.max(6, min(geometry.size.width, CGFloat(value) / CGFloat(max) * geometry.size.width)), height: 8)
                 }
             }
             .frame(height: 8)

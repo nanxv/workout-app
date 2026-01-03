@@ -312,7 +312,7 @@ struct RoutinesViewWireframe: View {
     
     private func resetToDefault() {
         // 生成默认数据
-        let defaultRoutines = [
+        let defaultRoutines: [(String, [(String, Int, Int?, Int?, Int, Double?)])] = [
             ("Day A", [
                 ("俯卧撑", 4, 12, nil, 90, nil),
                 ("徒手深蹲", 5, 15, nil, 120, nil),
