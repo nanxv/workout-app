@@ -72,7 +72,7 @@ struct RoutinesViewWireframe: View {
                     // 导入/导出面板
                     if importExportOpen {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("粘贴 JSON 后点击"载入"覆盖当前计划。")
+                            Text("粘贴 JSON 后点击\"载入\"覆盖当前计划。")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             

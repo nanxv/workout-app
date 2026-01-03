@@ -238,6 +238,12 @@ struct StatusCapsuleView: View {
                 return .orange
             case .restricted:
                 return .orange
+            case .fullAccess:
+                // iOS 17+ only, but included for completeness
+                return .green
+            case .writeOnly:
+                // iOS 17+ only, but included for completeness
+                return .orange
             @unknown default:
                 return .gray
             }
@@ -267,6 +273,12 @@ struct StatusCapsuleView: View {
             case .denied:
                 return "已拒绝"
             case .restricted:
+                return "已拒绝"
+            case .fullAccess:
+                // iOS 17+ only, but included for completeness
+                return "已授权"
+            case .writeOnly:
+                // iOS 17+ only, but included for completeness
                 return "已拒绝"
             @unknown default:
                 return "未知"
