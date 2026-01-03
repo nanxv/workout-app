@@ -197,9 +197,9 @@ struct CoachView: View {
         // Simple summary for now
         let descriptor = FetchDescriptor<Session>()
         if let sessions = try? modelContext.fetch(descriptor) {
-            return "You have \(sessions.count) training sessions recorded."
+            return "您已记录 \(sessions.count) 次训练。"
         }
-        return "No training data yet."
+        return "暂无训练数据。"
     }
     
     #if os(iOS)
@@ -208,7 +208,7 @@ struct CoachView: View {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first,
               let rootViewController = window.rootViewController else {
-            messages.append(ChatMessage(content: "Unable to access view controller", isUser: false))
+            messages.append(ChatMessage(content: "无法访问视图控制器", isUser: false))
             return
         }
         
@@ -225,9 +225,9 @@ struct CoachView: View {
             if let eventId = eventId {
                 session.calendarEventId = eventId
                 try? modelContext.save()
-                messages.append(ChatMessage(content: "Added to calendar successfully", isUser: false))
+                messages.append(ChatMessage(content: "已成功添加到日历", isUser: false))
             } else {
-                messages.append(ChatMessage(content: "Failed to add to calendar", isUser: false))
+                messages.append(ChatMessage(content: "添加到日历失败", isUser: false))
             }
         }
     }
