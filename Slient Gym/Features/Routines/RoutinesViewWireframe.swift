@@ -478,6 +478,9 @@ struct RoutineDayCardWireframe: View {
         .background(Color(.systemBackground))
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .sheet(isPresented: $showCalendarSheet) {
+            RoutineCalendarSheet(routine: routine)
+        }
     }
     
     private func estimateMinutes(for routine: Routine) -> Int {
