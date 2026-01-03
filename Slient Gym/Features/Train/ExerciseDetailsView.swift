@@ -257,7 +257,7 @@ struct SetRowView: View {
                     Text("重量(kg)")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    InlineNumberField(
+                    InlineDoubleField(
                         value: Binding(
                             get: { setLog.weightKg },
                             set: { newValue in
@@ -373,7 +373,7 @@ struct SetRowView: View {
     }
 }
 
-/// 行内数字输入框
+/// 行内数字输入框（Int）
 struct InlineNumberField: View {
     @Binding var value: Int?
     @State private var isEditing = false
@@ -419,6 +419,52 @@ struct InlineNumberField: View {
     }
 }
 
+/// 行内浮点数输入框（Double，用于重量）
+struct InlineDoubleField: View {
+    @Binding var value: Double?
+    @State private var isEditing = false
+    @State private var draftText: String = ""
+    let placeholder: String
+    
+    var body: some View {
+        if isEditing {
+            TextField(placeholder, text: $draftText)
+                .keyboardType(.decimalPad)
+                .textFieldStyle(.roundedBorder)
+                .font(.caption)
+                .onSubmit {
+                    commit()
+                }
+                .onAppear {
+                    draftText = value != nil ? String(format: "%.1f", value!) : ""
+                }
+        } else {
+            Button(action: {
+                isEditing = true
+            }) {
+                Text(value != nil ? String(format: "%.1f", value!) : placeholder)
+                    .font(.caption)
+                    .foregroundColor(value != nil ? .primary : .secondary)
+                    .frame(minWidth: 40)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(6)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+    
+    private func commit() {
+        if let doubleValue = Double(draftText) {
+            value = doubleValue
+        } else if draftText.isEmpty {
+            value = nil
+        }
+        isEditing = false
+    }
+}
+
 /// 组记录数据模型（临时，用于 UI）
 struct SetLogEntry {
     var setIndex: Int
@@ -428,9 +474,5 @@ struct SetLogEntry {
     var weightKg: Double?
 }
 
-extension Array {
-    subscript(safe index: Int) -> Element? {
-        return indices.contains(index) ? self[index] : nil
-    }
-}
+// subscript(safe:) 已在 TrainViewWireframe.swift 中定义，这里不再重复定义
 
