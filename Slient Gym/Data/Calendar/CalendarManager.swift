@@ -119,14 +119,6 @@ class CalendarManager: NSObject, ObservableObject {
         }
     }
     
-    /// 生成事件标题
-    private func generateEventTitle(for session: Session) -> String {
-        if let routineName = session.routine?.name {
-            return "训练 - \(routineName)"
-        }
-        return "训练"
-    }
-    
     /// 创建训练计划事件（用于提前安排训练）
     /// - Parameters:
     ///   - routine: 训练计划 Routine
