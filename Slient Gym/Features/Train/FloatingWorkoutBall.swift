@@ -19,7 +19,7 @@ struct FloatingWorkoutBall: View {
     let onEnd: () -> Void
     
     @State private var isExpanded = false
-    @State private var position: CGPoint
+    @State private var position: CGPoint = CGPoint(x: 350, y: 600) // 默认位置
     @State private var isDragging = false
     
     @AppStorage("floatingBallPositionX") private var savedX: Double = 0
@@ -44,13 +44,6 @@ struct FloatingWorkoutBall: View {
         self.onStartRest = onStartRest
         self.onAddRest = onAddRest
         self.onEnd = onEnd
-        
-        // 从 UserDefaults 恢复位置，默认右下角
-        let defaultX: CGFloat = 350
-        let defaultY: CGFloat = 600
-        let x = savedX > 0 ? savedX : Double(defaultX)
-        let y = savedY > 0 ? savedY : Double(defaultY)
-        _position = State(initialValue: CGPoint(x: x, y: y))
     }
     
     var body: some View {
@@ -79,6 +72,12 @@ struct FloatingWorkoutBall: View {
                     }
                 }
                 .position(position)
+                .onAppear {
+                    // 恢复保存的位置
+                    if savedX > 0 && savedY > 0 {
+                        position = CGPoint(x: savedX, y: savedY)
+                    }
+                }
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in

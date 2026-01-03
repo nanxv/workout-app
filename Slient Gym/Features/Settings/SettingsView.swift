@@ -66,7 +66,7 @@ struct SettingsView: View {
         }
         
         // 创建默认计划
-        let defaultRoutines = [
+        let defaultRoutines: [(String, [(String, Int, Int?, Int?, Int, Double?)])] = [
             ("Day A", [
                 ("俯卧撑", 4, 12, nil, 90, nil),
                 ("徒手深蹲", 5, 15, nil, 120, nil),
