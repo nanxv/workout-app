@@ -92,7 +92,7 @@ struct FloatingWorkoutBall: View {
                             
                             // 限制在可视范围内
                             let clampedX = max(ballRadius + 8, min(geometry.size.width - ballRadius - 8, newX))
-                            let clampedY = max(ballRadius + 59 + 8, min(geometry.size.height - 120 - ballRadius - 8, clampedY))
+                            let clampedY = max(ballRadius + 59 + 8, min(geometry.size.height - 120 - ballRadius - 8, newY))
                             
                             position = CGPoint(x: clampedX, y: clampedY)
                         }
