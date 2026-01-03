@@ -123,35 +123,31 @@ struct TrainView: View {
             } else {
                 List(routines) { routine in
                     Button(action: {
-                        do {
-                            print("Starting routine: \(routine.name)")
-                            selectedRoutineId = routine.id
-                            
-                            // 先本地开始训练（不阻塞）
-                            guard let session = sessionCoordinator.startSession(routineId: routine.id) else {
-                                print("Failed to start session: routine not found or invalid")
-                                return
-                            }
-                            
-                            print("Session started: \(session.id)")
-                            
-                            // 后台尝试启动 watch（非阻塞）
-                            #if os(iOS)
-                            Task.detached(priority: .userInitiated) {
-                                await MainActor.run {
-                                    WatchWorkoutLauncher.shared.startWatchWorkout(sessionId: session.id) { success, error in
-                                        if success {
-                                            print("Watch workout started successfully")
-                                        } else {
-                                            print("Watch workout failed (non-blocking): \(error?.localizedDescription ?? "Unknown")")
-                                        }
+                        print("Starting routine: \(routine.name)")
+                        selectedRoutineId = routine.id
+                        
+                        // 先本地开始训练（不阻塞）
+                        guard let session = sessionCoordinator.startSession(routineId: routine.id) else {
+                            print("Failed to start session: routine not found or invalid")
+                            return
+                        }
+                        
+                        print("Session started: \(session.id)")
+                        
+                        // 后台尝试启动 watch（非阻塞）
+                        #if os(iOS)
+                        Task.detached(priority: .userInitiated) {
+                            await MainActor.run {
+                                WatchWorkoutLauncher.shared.startWatchWorkout(sessionId: session.id) { success, error in
+                                    if success {
+                                        print("Watch workout started successfully")
+                                    } else {
+                                        print("Watch workout failed (non-blocking): \(error?.localizedDescription ?? "Unknown")")
                                     }
                                 }
                             }
-                            #endif
-                        } catch {
-                            print("Error starting session: \(error.localizedDescription)")
                         }
+                        #endif
                     }) {
                         HStack {
                             Text(routine.name)

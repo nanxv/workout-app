@@ -11,7 +11,7 @@ import SwiftData
 struct RoutineHistoryHelper {
     /// 获取指定 Routine 的最近一次 Session
     static func latestSession(for routineId: UUID, context: ModelContext) -> Session? {
-        let descriptor = FetchDescriptor<Session>(
+        var descriptor = FetchDescriptor<Session>(
             predicate: #Predicate { $0.routine?.id == routineId },
             sortBy: [SortDescriptor(\.startAt, order: .reverse)]
         )

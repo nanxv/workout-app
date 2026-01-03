@@ -234,7 +234,9 @@ struct StatusCapsuleView: View {
                 return .green
             case .notDetermined:
                 return .gray
-            case .denied, .restricted:
+            case .denied:
+                return .orange
+            case .restricted:
                 return .orange
             @unknown default:
                 return .gray
@@ -262,7 +264,9 @@ struct StatusCapsuleView: View {
                 return "已授权"
             case .notDetermined:
                 return "未授权"
-            case .denied, .restricted:
+            case .denied:
+                return "已拒绝"
+            case .restricted:
                 return "已拒绝"
             @unknown default:
                 return "未知"

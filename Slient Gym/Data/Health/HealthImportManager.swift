@@ -106,8 +106,6 @@ class HealthImportManager: ObservableObject {
                     return
                 }
                 
-                var importedCount = 0
-                
                 // 收集要导入的 workouts（在主线程上处理）
                 let workoutsData = workouts.compactMap { workout -> (UUID, Int, Date, Date, Double, Double?, Double?, String, String)? in
                     // 检查是否已导入
@@ -145,6 +143,8 @@ class HealthImportManager: ObservableObject {
                 
                 // 在主线程上插入和保存（使用 Task 而不是 await，因为回调是同步的）
                 Task { @MainActor in
+                    // 在 MainActor 上创建新的 context 引用，避免 Sendable 问题
+                    let mainContext = context
                     for workoutData in workoutsData {
                         let externalWorkout = ExternalWorkout(
                             uuid: workoutData.0,
@@ -158,11 +158,11 @@ class HealthImportManager: ObservableObject {
                             sourceBundleId: workoutData.8,
                             importedAt: Date()
                         )
-                        context.insert(externalWorkout)
+                        mainContext.insert(externalWorkout)
                     }
                     
                     do {
-                        try context.save()
+                        try mainContext.save()
                         self.lastImportDate = Date()
                         print("Imported \(finalCount) running workouts")
                         continuation.resume(returning: finalCount)

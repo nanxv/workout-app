@@ -145,10 +145,6 @@ class SessionCoordinator: ObservableObject {
             currentExerciseIndex = 0
             currentSetIndex = 0
             
-            // 确保 targetSets 至少为 1（防止越界）
-            let firstExercise = sortedExercises.first
-            let targetSets = max(1, firstExercise?.targetSets ?? 3)
-            
             state = .running(sessionId: session.id, currentExerciseIndex: 0, currentSetIndex: 0)
             
             // Watch workout 启动已移到 TrainView 中后台执行，这里不再阻塞
