@@ -14,22 +14,32 @@ struct RoutinesView: View {
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var showingAddRoutine = false
     @State private var selectedRoutine: Routine?
+    @State private var expandedRoutineIds: Set<UUID> = []
+    @State private var cachedLatestSessions: [UUID: Session] = [:]
     
     var body: some View {
         NavigationStack {
             List {
                 ForEach(routines) { routine in
-                    NavigationLink(destination: RoutineDetailView(routine: routine)) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(routine.name)
-                                .font(.headline)
-                            if let exercises = routine.exercises, !exercises.isEmpty {
-                                Text("\(exercises.count) exercises")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                    RoutineCardView(
+                        routine: routine,
+                        isExpanded: expandedRoutineIds.contains(routine.id),
+                        latestSession: cachedLatestSessions[routine.id],
+                        onToggle: {
+                            withAnimation {
+                                if expandedRoutineIds.contains(routine.id) {
+                                    expandedRoutineIds.remove(routine.id)
+                                } else {
+                                    expandedRoutineIds.insert(routine.id)
+                                    // 展开时加载最新 Session
+                                    loadLatestSession(for: routine.id)
+                                }
                             }
+                        },
+                        onNavigate: {
+                            selectedRoutine = routine
                         }
-                    }
+                    )
                 }
                 .onDelete(perform: deleteRoutines)
             }
@@ -46,6 +56,15 @@ struct RoutinesView: View {
             .sheet(isPresented: $showingAddRoutine) {
                 AddRoutineView()
             }
+            .navigationDestination(item: $selectedRoutine) { routine in
+                RoutineDetailView(routine: routine)
+            }
+        }
+    }
+    
+    private func loadLatestSession(for routineId: UUID) {
+        if let session = RoutineHistoryHelper.latestSession(for: routineId, context: modelContext) {
+            cachedLatestSessions[routineId] = session
         }
     }
     

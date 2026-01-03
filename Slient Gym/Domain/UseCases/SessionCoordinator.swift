@@ -109,20 +109,34 @@ class SessionCoordinator: ObservableObject {
             return nil
         }
         
+        // 空值保护：确保 routine 有 exercises
+        guard let routineExercises = routine.exercises, !routineExercises.isEmpty else {
+            state = .error(message: "Routine has no exercises")
+            return nil
+        }
+        
         let session = Session(routine: routine, startAt: Date())
         modelContext.insert(session)
         
         // Create SessionExercise entries for each RoutineExercise
-        if let routineExercises = routine.exercises?.sorted(by: { $0.order < $1.order }) {
-            for (index, routineExercise) in routineExercises.enumerated() {
-                guard let exercise = routineExercise.exercise else { continue }
-                let sessionExercise = SessionExercise(
-                    session: session,
-                    exercise: exercise,
-                    order: index
-                )
-                modelContext.insert(sessionExercise)
+        let sortedExercises = routineExercises.sorted(by: { $0.order < $1.order })
+        for (index, routineExercise) in sortedExercises.enumerated() {
+            guard let exercise = routineExercise.exercise else {
+                print("Warning: RoutineExercise at index \(index) has no exercise, skipping")
+                continue
             }
+            let sessionExercise = SessionExercise(
+                session: session,
+                exercise: exercise,
+                order: index
+            )
+            modelContext.insert(sessionExercise)
+        }
+        
+        // 确保至少创建了一个 SessionExercise
+        guard session.exercises?.isEmpty == false else {
+            state = .error(message: "Failed to create session exercises")
+            return nil
         }
         
         do {
@@ -130,21 +144,21 @@ class SessionCoordinator: ObservableObject {
             currentSession = session
             currentExerciseIndex = 0
             currentSetIndex = 0
+            
+            // 确保 targetSets 至少为 1（防止越界）
+            let firstExercise = sortedExercises.first
+            let targetSets = max(1, firstExercise?.targetSets ?? 3)
+            
             state = .running(sessionId: session.id, currentExerciseIndex: 0, currentSetIndex: 0)
             
-            // Start watch workout
-                #if os(iOS)
-                watchLauncher.startWatchWorkout(sessionId: session.id) { [weak self] success, error in
-                if success {
-                    // Send start message via WatchConnectivity
-                    self?.watchConnectivity.sendStartWorkout(
-                        sessionId: session.id,
-                        activityType: Int(HKWorkoutActivityType.traditionalStrengthTraining.rawValue)
-                    )
-                } else {
-                    print("Failed to start watch workout: \(error?.localizedDescription ?? "Unknown error")")
-                    // Continue anyway, watch workout is optional
-                }
+            // Watch workout 启动已移到 TrainView 中后台执行，这里不再阻塞
+            // 但可以发送启动消息（如果 watch 可达）
+            #if os(iOS)
+            if watchConnectivity.isWatchReachable {
+                watchConnectivity.sendStartWorkout(
+                    sessionId: session.id,
+                    activityType: Int(HKWorkoutActivityType.traditionalStrengthTraining.rawValue)
+                )
             }
             #endif
             
@@ -159,15 +173,26 @@ class SessionCoordinator: ObservableObject {
         guard case .running(let sessionId, let exerciseIndex, let setIndex) = state,
               let session = currentSession,
               session.id == sessionId else {
+            print("Cannot complete set: invalid state or session")
             return
         }
         
         guard let exercises = session.exercises?.sorted(by: { $0.order < $1.order }),
               exerciseIndex < exercises.count else {
+            print("Cannot complete set: exercise index out of bounds")
+            state = .error(message: "Exercise index out of bounds")
             return
         }
         
         let sessionExercise = exercises[exerciseIndex]
+        
+        // 空值保护
+        guard sessionExercise.exercise != nil else {
+            print("Cannot complete set: sessionExercise has no exercise")
+            state = .error(message: "Session exercise has no exercise")
+            return
+        }
+        
         let restSeconds = getRestSecondsForExercise(sessionExercise)
         
         let setEntry = SetEntry(
@@ -187,7 +212,7 @@ class SessionCoordinator: ObservableObject {
         
         // Check if more sets needed
         let routineExercise = getRoutineExercise(for: sessionExercise)
-        let targetSets = routineExercise?.targetSets ?? 3
+        let targetSets = max(1, routineExercise?.targetSets ?? 3) // 确保至少为 1
         
         // Update watch with current exercise info
         #if os(iOS)

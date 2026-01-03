@@ -26,6 +26,12 @@ struct HistoryView: View {
     @State private var isImporting = false
     @State private var showNRCGuide = false
     
+    let selectedRoutineId: UUID?
+    
+    init(selectedRoutineId: UUID? = nil) {
+        self.selectedRoutineId = selectedRoutineId
+    }
+    
     var body: some View {
         NavigationStack {
             VStack {
@@ -119,7 +125,10 @@ struct HistoryView: View {
     }
     
     private var filteredSessions: [Session] {
-        sessions
+        if let routineId = selectedRoutineId {
+            return sessions.filter { $0.routine?.id == routineId }
+        }
+        return sessions
     }
 }
 

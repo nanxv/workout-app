@@ -38,7 +38,7 @@ struct TrainView: View {
             VStack(spacing: 0) {
                 #if os(iOS)
                 if case .idle = sessionCoordinator.state {
-                    StatusIndicatorView()
+                    StatusCapsuleView()
                 }
                 #endif
                 
@@ -123,12 +123,34 @@ struct TrainView: View {
             } else {
                 List(routines) { routine in
                     Button(action: {
-                        print("Starting routine: \(routine.name)")
-                        selectedRoutineId = routine.id
-                        if let session = sessionCoordinator.startSession(routineId: routine.id) {
+                        do {
+                            print("Starting routine: \(routine.name)")
+                            selectedRoutineId = routine.id
+                            
+                            // 先本地开始训练（不阻塞）
+                            guard let session = sessionCoordinator.startSession(routineId: routine.id) else {
+                                print("Failed to start session: routine not found or invalid")
+                                return
+                            }
+                            
                             print("Session started: \(session.id)")
-                        } else {
-                            print("Failed to start session")
+                            
+                            // 后台尝试启动 watch（非阻塞）
+                            #if os(iOS)
+                            Task.detached(priority: .userInitiated) {
+                                await MainActor.run {
+                                    WatchWorkoutLauncher.shared.startWatchWorkout(sessionId: session.id) { success, error in
+                                        if success {
+                                            print("Watch workout started successfully")
+                                        } else {
+                                            print("Watch workout failed (non-blocking): \(error?.localizedDescription ?? "Unknown")")
+                                        }
+                                    }
+                                }
+                            }
+                            #endif
+                        } catch {
+                            print("Error starting session: \(error.localizedDescription)")
                         }
                     }) {
                         HStack {
@@ -148,12 +170,13 @@ struct TrainView: View {
     private func trainingView(sessionId: UUID, exerciseIndex: Int, setIndex: Int) -> some View {
         VStack {
             if let session = sessionCoordinator.currentSession,
+               session.id == sessionId,
                let exercises = session.exercises?.sorted(by: { $0.order < $1.order }),
                exerciseIndex < exercises.count {
                 let sessionExercise = exercises[exerciseIndex]
                 let exercise = sessionExercise.exercise
                 let routineExercise = getRoutineExercise(for: sessionExercise)
-                let targetSets = routineExercise?.targetSets ?? 3
+                let targetSets = max(1, routineExercise?.targetSets ?? 3) // 确保至少为 1
                 
                 VStack(spacing: 20) {
                     // Exercise name
