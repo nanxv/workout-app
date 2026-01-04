@@ -11,10 +11,25 @@ import Combine
 import UIKit
 #endif
 
-enum RestTimerState {
+enum RestTimerState: Equatable {
     case off
     case running(remaining: Int)
     case paused(remaining: Int)
+}
+
+extension RestTimerState {
+    static func == (lhs: RestTimerState, rhs: RestTimerState) -> Bool {
+        switch (lhs, rhs) {
+        case (.off, .off):
+            return true
+        case (.running(let l), .running(let r)):
+            return l == r
+        case (.paused(let l), .paused(let r)):
+            return l == r
+        default:
+            return false
+        }
+    }
 }
 
 class RestTimerManager: ObservableObject {

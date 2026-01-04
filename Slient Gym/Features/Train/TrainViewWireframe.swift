@@ -18,12 +18,12 @@ struct TrainViewWireframe: View {
     @Query(sort: \Routine.name) private var routines: [Routine]
     @StateObject private var sessionCoordinator: SessionCoordinator
     @StateObject private var restTimer = RestTimerManager()
+    @StateObject private var ballState = FloatingBallState()
     @State private var selectedRoutineId: UUID?
     @State private var showRestTimer = false
     @State private var capsuleHidden = false
     @State private var openDayIds: Set<UUID> = []
-    @State private var floatVisible = false
-    @State private var bubbleOpen = false
+    @State private var showEndSessionConfirmation = false
     
     init() {
         let tempContainer = PersistenceController.shared.container
@@ -96,31 +96,62 @@ struct TrainViewWireframe: View {
                 }
                 
                 // 悬浮球（仅在训练中显示）
-                if floatVisible, let currentSession = sessionCoordinator.currentSession {
-                    FloatingWorkoutBall(
-                        title: "当前训练 · \(currentSession.routine?.name ?? "未设置")",
-                        subtitle: getCurrentExerciseSubtitle(),
-                        restSeconds: restTimer.remainingSeconds,
-                        onToggle: {
-                            bubbleOpen.toggle()
-                        },
-                        onStartRest: {
+                FloatingWorkoutBall(
+                    state: ballState,
+                    onSingleTap: {
+                        ballState.showPanel.toggle()
+                    },
+                    onDoubleTap: {
+                        // 双击：暂停/继续休息
+                        if ballState.isResting {
+                            if case .running = restTimer.state {
+                                restTimer.pause()
+                            } else if case .paused = restTimer.state {
+                                restTimer.resume()
+                            }
+                        } else {
+                            // 如果不在休息中，开始休息
                             if let restSec = getCurrentRestSeconds() {
                                 restTimer.start(seconds: restSec)
                                 sessionCoordinator.startRest(seconds: restSec)
                             }
-                        },
-                        onAddRest: {
-                            restTimer.extend(by: 30)
-                            sessionCoordinator.extendRest(by: 30)
-                        },
-                        onEnd: {
-                            sessionCoordinator.endSession()
-                            floatVisible = false
-                            bubbleOpen = false
                         }
-                    )
+                    },
+                    onLongPress: {
+                        // 长按：结束训练确认
+                        showEndSessionConfirmation = true
+                    },
+                    onDragEnd: { point, frame in
+                        snapToEdges(point: point, in: frame)
+                    }
+                )
+            }
+            .sheet(isPresented: $ballState.showPanel) {
+                FloatingBallPanel(
+                    state: ballState,
+                    onPlus15: {
+                        restTimer.extend(by: 15)
+                        sessionCoordinator.extendRest(by: 15)
+                    },
+                    onSkip: {
+                        restTimer.skip()
+                        sessionCoordinator.restFinished()
+                    },
+                    onEnd: {
+                        sessionCoordinator.endSession()
+                        ballState.showPanel = false
+                    }
+                )
+                .presentationDetents([.height(200)])
+            }
+            .alert("结束训练", isPresented: $showEndSessionConfirmation) {
+                Button("取消", role: .cancel) {}
+                Button("确认", role: .destructive) {
+                    sessionCoordinator.endSession()
+                    ballState.showPanel = false
                 }
+            } message: {
+                Text("确定要结束当前训练吗？")
             }
             .navigationTitle("训练")
         }
@@ -132,12 +163,46 @@ struct TrainViewWireframe: View {
             if let restSeconds = notification.userInfo?["restSeconds"] as? Int {
                 restTimer.start(seconds: restSeconds)
                 sessionCoordinator.startRest(seconds: restSeconds)
-                floatVisible = true
-                bubbleOpen = true
             }
         }
         .onChange(of: sessionCoordinator.state) { oldValue, newValue in
             handleStateChange(newValue)
+        }
+        // 监听训练状态，控制悬浮球显示
+        .onChange(of: sessionCoordinator.currentSession) { oldValue, newValue in
+            ballState.isVisible = newValue != nil
+            if newValue == nil {
+                ballState.showPanel = false
+            }
+        }
+        // 监听休息计时器状态
+        .onChange(of: restTimer.state) { oldValue, newValue in
+            switch newValue {
+            case .running(let remaining):
+                // 获取总休息时长（从当前动作的默认休息时间）
+                let totalRest = getCurrentRestSeconds() ?? 90
+                ballState.updateRestState(
+                    isActive: true,
+                    remaining: TimeInterval(remaining),
+                    total: TimeInterval(totalRest)
+                )
+                // 休息结束时震动反馈
+                if remaining == 0 {
+                    #if os(iOS)
+                    let notificationFeedback = UINotificationFeedbackGenerator()
+                    notificationFeedback.notificationOccurred(.success)
+                    #endif
+                }
+            case .paused(let remaining):
+                // 保持总时长不变
+                ballState.updateRestState(
+                    isActive: true,
+                    remaining: TimeInterval(remaining),
+                    total: ballState.restTotal > 0 ? ballState.restTotal : TimeInterval(remaining)
+                )
+            case .off:
+                ballState.updateRestState(isActive: false, remaining: 0, total: 0)
+            }
         }
         // 移除自动弹出日历的 sheet，用户可以通过其他方式手动添加
     }
@@ -147,7 +212,6 @@ struct TrainViewWireframe: View {
             return
         }
         
-        floatVisible = true
         openDayIds.insert(routine.id)
         
         // 后台尝试启动 watch
@@ -207,11 +271,15 @@ struct TrainViewWireframe: View {
                 sessionCoordinator.restFinished()
                 showRestTimer = false
             }
-            floatVisible = true
-            bubbleOpen = true
+            // 更新悬浮球休息状态
+            ballState.updateRestState(
+                isActive: true,
+                remaining: TimeInterval(remaining),
+                total: TimeInterval(remaining)
+            )
         case .finished:
-            floatVisible = false
-            bubbleOpen = false
+            ballState.isVisible = false
+            ballState.showPanel = false
         default:
             break
         }
