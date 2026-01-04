@@ -113,3 +113,4 @@ A: 可以，修改 `WatchWorkoutLauncher.swift`，将 `typesToShare` 改为空�
 let typesToShare: Set<HKSampleType> = [] // 暂时不请求写入权限
 ```
 
+

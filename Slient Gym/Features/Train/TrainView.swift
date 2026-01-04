@@ -85,24 +85,12 @@ struct TrainView: View {
             print("TrainView appeared, routines count: \(routines.count)")
             print("SessionCoordinator state: \(sessionCoordinator.state)")
             
-            // Setup calendar integration
-            #if os(iOS)
-            sessionCoordinator.onSessionEnded = { [self] session in
-                endedSession = session
-                showCalendarSheet = true
-            }
-            #endif
+            // 移除自动弹出日历的逻辑，用户可以在需要时手动添加
         }
         .onChange(of: sessionCoordinator.state) { oldValue, newValue in
             handleStateChange(newValue)
         }
-        #if os(iOS)
-        .sheet(isPresented: $showCalendarSheet) {
-            if let session = endedSession {
-                CalendarEventSheet(session: session)
-            }
-        }
-        #endif
+        // 移除自动弹出日历的 sheet，用户可以通过其他方式手动添加
     }
     
     private var routineSelectionView: some View {

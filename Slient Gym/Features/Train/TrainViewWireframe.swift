@@ -24,10 +24,6 @@ struct TrainViewWireframe: View {
     @State private var openDayIds: Set<UUID> = []
     @State private var floatVisible = false
     @State private var bubbleOpen = false
-    #if os(iOS)
-    @State private var showCalendarSheet = false
-    @State private var endedSession: Session?
-    #endif
     
     init() {
         let tempContainer = PersistenceController.shared.container
@@ -130,12 +126,7 @@ struct TrainViewWireframe: View {
         }
         .onAppear {
             sessionCoordinator.modelContext = modelContext
-            #if os(iOS)
-            sessionCoordinator.onSessionEnded = { session in
-                endedSession = session
-                showCalendarSheet = true
-            }
-            #endif
+            // 移除自动弹出日历的逻辑，用户可以在需要时手动添加
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("StartRestTimer"))) { notification in
             if let restSeconds = notification.userInfo?["restSeconds"] as? Int {
@@ -148,13 +139,7 @@ struct TrainViewWireframe: View {
         .onChange(of: sessionCoordinator.state) { oldValue, newValue in
             handleStateChange(newValue)
         }
-        #if os(iOS)
-        .sheet(isPresented: $showCalendarSheet) {
-            if let session = endedSession {
-                CalendarEventSheet(session: session)
-            }
-        }
-        #endif
+        // 移除自动弹出日历的 sheet，用户可以通过其他方式手动添加
     }
     
     private func startTraining(routine: Routine) {
@@ -268,15 +253,23 @@ struct RoutineDayCard: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
+                    // 根据训练状态显示"开始"或"结束"按钮
+                    let isActive = sessionCoordinator.currentSession?.routine?.id == routine.id
                     Button(action: {
-                        onStart()
+                        if isActive {
+                            // 结束训练
+                            sessionCoordinator.endSession()
+                        } else {
+                            // 开始训练
+                            onStart()
+                        }
                     }) {
-                        Text("开始")
+                        Text(isActive ? "结束" : "开始")
                             .font(.subheadline)
                             .foregroundColor(.white)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Color.black)
+                            .background(isActive ? Color.red : Color.black)
                             .cornerRadius(12)
                     }
                     .buttonStyle(.plain)

@@ -46,3 +46,4 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 - 描述文字应该清晰说明为什么需要这些权限
 - 如果应用被拒绝，可能需要更详细的描述
 
+
