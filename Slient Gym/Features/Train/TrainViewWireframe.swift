@@ -69,6 +69,7 @@ struct TrainViewWireframe: View {
                     routine: routine,
                     isOpen: openDayIds.contains(routine.id),
                     sessionCoordinator: sessionCoordinator,
+                    restTimer: restTimer,
                     modelContext: modelContext,
                     onToggle: {
                         withAnimation {
@@ -233,12 +234,6 @@ struct TrainViewWireframe: View {
         }
         .onAppear {
             sessionCoordinator.modelContext = modelContext
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("StartRestTimer"))) { notification in
-            if let restSeconds = notification.userInfo?["restSeconds"] as? Int {
-                restTimer.start(seconds: restSeconds)
-                sessionCoordinator.startRest(seconds: restSeconds)
-            }
         }
         .onChange(of: sessionCoordinator.state) { oldValue, newValue in
             handleStateChange(newValue)
@@ -424,6 +419,8 @@ struct RoutineDayCard: View {
     let routine: Routine
     let isOpen: Bool
     let sessionCoordinator: SessionCoordinator
+    /// Injected from parent — single source of truth for rest timing
+    let restTimer: RestTimerManager
     let modelContext: ModelContext
     let onToggle: () -> Void
     let onStart: () -> Void
@@ -487,7 +484,13 @@ struct RoutineDayCard: View {
                                 ExerciseDetailsView(
                                     sessionExercise: sessionExercise,
                                     routineExercise: routineExercise,
-                                    defaultExpanded: true
+                                    defaultExpanded: true,
+                                    restTimer: restTimer,
+                                    onSetCompleted: { restSec in
+                                        // Single source of truth: start rest here, not inside the view
+                                        restTimer.start(seconds: restSec)
+                                        sessionCoordinator.startRest(seconds: restSec)
+                                    }
                                 )
                                 .padding(.horizontal)
                                 .padding(.vertical, 8)

@@ -278,60 +278,57 @@ struct TrainView: View {
         .padding(.bottom, 4)
     }
     
+    /// Renders all exercises for the active session using the zero-friction ExerciseDetailsView.
+    /// Replaces the old TextField+Picker approach entirely.
     private func trainingView(sessionId: UUID, exerciseIndex: Int, setIndex: Int) -> some View {
-        VStack {
-            if let session = sessionCoordinator.currentSession,
-               session.id == sessionId,
-               let exercises = session.exercises?.sorted(by: { $0.order < $1.order }),
-               exerciseIndex < exercises.count {
-                let sessionExercise = exercises[exerciseIndex]
-                let exercise = sessionExercise.exercise
-                let routineExercise = getRoutineExercise(for: sessionExercise)
-                let targetSets = max(1, routineExercise?.targetSets ?? 3) // 确保至少为 1
-                
-                VStack(spacing: 16) {
-                    Text(exercise?.name ?? "未知动作")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    
-                    Text("第 \(setIndex + 1) / \(targetSets) 组")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    VStack(alignment: .leading, spacing: 10) {
-                        TextField("次数", text: $currentReps)
-                            .keyboardType(.numberPad)
-                            .textFieldStyle(.roundedBorder)
-                        
-                        Picker("RIR", selection: $currentRIR) {
-                            ForEach(0...4, id: \.self) { value in
-                                Text("\(value)").tag(value)
+        ScrollView {
+            VStack(spacing: 12) {
+                if let session = sessionCoordinator.currentSession,
+                   session.id == sessionId,
+                   let exercises = session.exercises?.sorted(by: { $0.order < $1.order }) {
+
+                    // Progress header
+                    HStack {
+                        Text(session.routineNameSnapshot)
+                            .font(.headline)
+                            .foregroundColor(AppTheme.textPrimary)
+                        Spacer()
+                        Text("\(exercises.filter { ($0.sets?.filter(\.isCompleted).count ?? 0) > 0 }.count)/\(exercises.count) 动作")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.textSecondary)
+                    }
+                    .padding(.horizontal)
+
+                    ForEach(Array(exercises.enumerated()), id: \.element.id) { idx, sessionExercise in
+                        let routineExercise = getRoutineExercise(for: sessionExercise)
+                        ExerciseDetailsView(
+                            sessionExercise: sessionExercise,
+                            routineExercise: routineExercise,
+                            defaultExpanded: idx == exerciseIndex,
+                            restTimer: restTimer,
+                            onSetCompleted: { restSec in
+                                restTimer.start(seconds: restSec)
+                                sessionCoordinator.startRest(seconds: restSec)
                             }
-                        }
-                        .pickerStyle(.segmented)
+                        )
+                        .padding(.horizontal)
                     }
-                    
-                    Button("完成一组") {
-                        if let reps = Int(currentReps) {
-                            sessionCoordinator.completeSet(reps: reps, rir: currentRIR)
-                            currentReps = ""
-                            currentRIR = 1
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.primary)
-                    .disabled(currentReps.isEmpty)
-                    
+
                     Button("结束训练") {
                         sessionCoordinator.endSession()
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(SGPrimaryButtonStyle(isDestructive: true))
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                } else {
+                    Text("无活动动作")
+                        .foregroundColor(AppTheme.textSecondary)
                 }
-                .padding(.horizontal)
-            } else {
-                Text("无活动动作")
             }
+            .padding(.vertical)
         }
+        .scrollIndicators(.hidden)
     }
     
     private func restTimerOverlay(remaining: Int) -> some View {

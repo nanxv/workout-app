@@ -2,53 +2,71 @@
 //  ExerciseDetailsView.swift
 //  Silent Gym
 //
-//  v2 — Zero-friction redesign
-//  • Smart auto-fill from previous session (highest priority)
-//  • Large stepper controls for weight & reps
-//  • Giant "完成第N组" button (full-width)
-//  • Inline rest countdown — no overlays, no sheets
-//  • Haptic feedback on set completion
+//  v3 — Single-source-of-truth architecture
+//  • RestTimerManager injected from parent (no local Timer — eliminates state split)
+//  • onSetCompleted callback replaces NotificationCenter hack
+//  • isRestingForThisExercise flag: this view knows only IF it triggered the rest
+//  • RIR quick picker: 3 color blocks (力竭 / 余1-2 / 轻松)
+//  • Smart auto-fill from previous session still intact
 //
 
 import SwiftUI
 import SwiftData
+
+// MARK: - RIR Option
+
+private struct RIROption: Identifiable {
+    let id: Int  // == rir value stored
+    let label: String
+    let color: Color
+}
+
+private let rirOptions: [RIROption] = [
+    RIROption(id: 0, label: "力竭",  color: AppTheme.destructive),
+    RIROption(id: 1, label: "余1-2", color: AppTheme.warning),
+    RIROption(id: 3, label: "轻松",  color: AppTheme.success),
+]
 
 // MARK: - ExerciseDetailsView
 
 struct ExerciseDetailsView: View {
     let sessionExercise: SessionExercise
     let routineExercise: RoutineExercise?
+    /// Global rest timer — SINGLE source of truth for countdown display
+    @ObservedObject var restTimer: RestTimerManager
+    /// Called when user completes a set; parent starts rest + updates session state
+    let onSetCompleted: (Int) -> Void
 
     @Environment(\.modelContext) private var modelContext
     @State private var isExpanded: Bool
     @State private var setLogs: [SetLogEntry] = []
-
-    // Smart auto-fill: data from the most recent previous session for this exercise
     @State private var previousSetData: [SetLogEntry] = []
     @State private var usingPreviousData = false
 
-    // Inline rest countdown (self-contained, no dependency on parent RestTimerManager)
-    @State private var restingAfterSetIndex: Int? = nil
-    @State private var localRestRemaining: Int = 0
-    @State private var localRestTotal: Int = 1
-    @State private var localTimer: Timer?
+    // This flag tracks only whether THIS exercise triggered the currently-running rest.
+    // Reset when restTimer stops — no local Timer needed.
+    @State private var isRestingForThisExercise = false
+    @State private var lastRestTotal: Int = 90   // UI hint for progress-bar width
 
     init(sessionExercise: SessionExercise,
          routineExercise: RoutineExercise?,
-         defaultExpanded: Bool = false) {
+         defaultExpanded: Bool = false,
+         restTimer: RestTimerManager,
+         onSetCompleted: @escaping (Int) -> Void) {
         self.sessionExercise = sessionExercise
         self.routineExercise = routineExercise
+        self.restTimer = restTimer
+        self.onSetCompleted = onSetCompleted
         _isExpanded = State(initialValue: defaultExpanded)
     }
 
     // MARK: Derived
 
-    private var targetSets: Int   { routineExercise?.targetSets ?? 3 }
-    private var isHoldType: Bool  { routineExercise?.isHoldType ?? false }
-    private var hasWeight: Bool   { routineExercise?.weightKgDefault != nil }
-    private var restSec: Int      { routineExercise?.restSecondsDefault ?? 90 }
+    private var targetSets: Int  { routineExercise?.targetSets ?? 3 }
+    private var isHoldType: Bool { routineExercise?.isHoldType ?? false }
+    private var hasWeight: Bool  { routineExercise?.weightKgDefault != nil }
+    private var restSec: Int     { routineExercise?.restSecondsDefault ?? 90 }
 
-    /// Index of the first set not yet completed — the one shown with full controls
     private var nextPendingIndex: Int? {
         setLogs.indices.first { !setLogs[$0].isCompleted }
     }
@@ -69,8 +87,7 @@ struct ExerciseDetailsView: View {
                     }
                     ForEach(0..<targetSets, id: \.self) { index in
                         setRow(at: index)
-                        // Inline rest countdown appears directly below the just-completed set
-                        if restingAfterSetIndex == index {
+                        if isRestingForThisExercise && nextPendingIndex == index + 1 {
                             restCountdownBar
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                         }
@@ -79,12 +96,17 @@ struct ExerciseDetailsView: View {
                 }
                 .padding(.bottom, 18)
                 .transition(.opacity.combined(with: .move(edge: .top)))
-                .animation(.easeInOut(duration: 0.22), value: restingAfterSetIndex)
             }
         }
         .onAppear { loadSetLogs() }
-        .onDisappear { stopLocalTimer() }
+        // When global restTimer stops, clear this exercise's resting flag
+        .onChange(of: restTimer.state) { _, newState in
+            if case .off = newState {
+                withAnimation { isRestingForThisExercise = false }
+            }
+        }
         .animation(.easeInOut(duration: 0.20), value: isExpanded)
+        .animation(.easeInOut(duration: 0.25), value: isRestingForThisExercise)
     }
 
     // MARK: Header
@@ -117,9 +139,8 @@ struct ExerciseDetailsView: View {
     private var progressDots: some View {
         HStack(spacing: 5) {
             ForEach(0..<targetSets, id: \.self) { i in
-                let done = setLogs[safe: i]?.isCompleted == true
                 Circle()
-                    .fill(done ? AppTheme.accent : AppTheme.border)
+                    .fill(setLogs[safe: i]?.isCompleted == true ? AppTheme.accent : AppTheme.border)
                     .frame(width: 7, height: 7)
             }
         }
@@ -139,7 +160,6 @@ struct ExerciseDetailsView: View {
         }
     }
 
-    // Compact green row for completed sets
     private func completedSetRow(index: Int, log: SetLogEntry) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
@@ -149,7 +169,7 @@ struct ExerciseDetailsView: View {
                 .foregroundColor(AppTheme.textPrimary)
             Spacer()
             if isHoldType {
-                Text("\(log.holdSec ?? 0) 秒")
+                Text("\(log.holdSec ?? 0)s")
                     .font(.subheadline)
                     .foregroundColor(AppTheme.textSecondary)
             } else {
@@ -163,6 +183,15 @@ struct ExerciseDetailsView: View {
                         .foregroundColor(AppTheme.textPrimary)
                 }
                 .font(.subheadline)
+                // RIR badge
+                if let rirOpt = rirOptions.first(where: { $0.id == (log.rir == 0 ? 0 : log.rir >= 3 ? 3 : 1) }) {
+                    Text(rirOpt.label)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(rirOpt.color)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .overlay(Capsule().stroke(rirOpt.color.opacity(0.5), lineWidth: 1))
+                }
             }
         }
         .padding(.horizontal, 14)
@@ -170,7 +199,6 @@ struct ExerciseDetailsView: View {
         .sgCard()
     }
 
-    // Dimmed row for future sets not yet reached
     private func pendingSetRow(index: Int, log: SetLogEntry) -> some View {
         HStack(spacing: 10) {
             Circle()
@@ -181,7 +209,7 @@ struct ExerciseDetailsView: View {
                 .foregroundColor(AppTheme.textTertiary)
             Spacer()
             if isHoldType {
-                Text("\(log.holdSec ?? routineExercise?.holdSecDefault ?? 0) 秒")
+                Text("\(log.holdSec ?? routineExercise?.holdSecDefault ?? 0)s")
                     .font(.caption)
                     .foregroundColor(AppTheme.textTertiary)
             } else {
@@ -200,17 +228,13 @@ struct ExerciseDetailsView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(AppTheme.background)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.cardRadius)
-                .stroke(AppTheme.border.opacity(0.35), lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: AppTheme.cardRadius).stroke(AppTheme.border.opacity(0.35), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.cardRadius))
     }
 
-    // Active set: large steppers + giant complete button
+    // Active set: large steppers + RIR picker + giant button
     private func activeSetCard(index: Int, log: SetLogEntry) -> some View {
-        VStack(spacing: 20) {
-            // Set label
+        VStack(spacing: 18) {
             HStack {
                 Text("第 \(index + 1) 组")
                     .font(.subheadline.bold())
@@ -221,7 +245,7 @@ struct ExerciseDetailsView: View {
                     .foregroundColor(AppTheme.textTertiary)
             }
 
-            // Controls
+            // Weight / reps / hold steppers
             if isHoldType {
                 stepperRow(
                     label: "秒",
@@ -238,16 +262,8 @@ struct ExerciseDetailsView: View {
                                 if let kg = setLogs[safe: index]?.weightKg { return String(format: "%.1f", kg) }
                                 return "—"
                             }(),
-                            onDecrement: {
-                                adjustLog(at: index) { log in
-                                    log.weightKg = max(0, (log.weightKg ?? 0) - 2.5)
-                                }
-                            },
-                            onIncrement: {
-                                adjustLog(at: index) { log in
-                                    log.weightKg = (log.weightKg ?? 0) + 2.5
-                                }
-                            }
+                            onDecrement: { adjustLog(at: index) { $0.weightKg = max(0, ($0.weightKg ?? 0) - 2.5) } },
+                            onIncrement: { adjustLog(at: index) { $0.weightKg = ($0.weightKg ?? 0) + 2.5 } }
                         )
                     }
                     stepperRow(
@@ -259,7 +275,10 @@ struct ExerciseDetailsView: View {
                 }
             }
 
-            // Giant "完成" button — full width, 56 pt height
+            // RIR quick picker — 3 colored blocks, no Picker system control
+            rirPicker(at: index)
+
+            // Giant "完成" button — full width
             Button { completeActiveSet(at: index) } label: {
                 Text("完成第 \(index + 1) 组")
             }
@@ -269,13 +288,10 @@ struct ExerciseDetailsView: View {
         .sgActiveCard()
     }
 
-    // Stepper control: large [−] VALUE [+]
-    private func stepperRow(
-        label: String,
-        displayValue: String,
-        onDecrement: @escaping () -> Void,
-        onIncrement: @escaping () -> Void
-    ) -> some View {
+    // Stepper: [−]  VALUE  [+]
+    private func stepperRow(label: String, displayValue: String,
+                             onDecrement: @escaping () -> Void,
+                             onIncrement: @escaping () -> Void) -> some View {
         VStack(spacing: 6) {
             HStack(spacing: 16) {
                 Button(action: onDecrement) {
@@ -293,7 +309,6 @@ struct ExerciseDetailsView: View {
                     .foregroundColor(AppTheme.textPrimary)
                     .frame(minWidth: 76, alignment: .center)
                     .monospacedDigit()
-                    .lineLimit(1)
 
                 Button(action: onIncrement) {
                     Image(systemName: "plus")
@@ -311,22 +326,49 @@ struct ExerciseDetailsView: View {
         }
     }
 
-    // MARK: Inline Rest Countdown
+    // RIR: 3 color-coded blocks instead of system Picker
+    private func rirPicker(at index: Int) -> some View {
+        let currentRIR = setLogs[safe: index]?.rir ?? 1
+        return HStack(spacing: 6) {
+            ForEach(rirOptions) { opt in
+                let isSelected = (opt.id == 0 && currentRIR == 0) ||
+                                 (opt.id == 1 && currentRIR > 0 && currentRIR < 3) ||
+                                 (opt.id == 3 && currentRIR >= 3)
+                Button {
+                    adjustLog(at: index) { $0.rir = opt.id }
+                } label: {
+                    Text(opt.label)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(isSelected ? AppTheme.accentForeground : opt.color)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(isSelected ? opt.color : opt.color.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: Inline Rest Countdown (driven by global restTimer)
 
     private var restCountdownBar: some View {
-        VStack(spacing: 8) {
+        let remaining = restTimer.remainingSeconds
+        let total = max(1, lastRestTotal)
+        return VStack(spacing: 8) {
             HStack {
                 Image(systemName: "timer")
                     .font(.caption.bold())
                     .foregroundColor(AppTheme.accent)
-                Text("休息 \(localRestRemaining)s")
+                Text(restTimerLabel)
                     .font(.subheadline.bold())
                     .foregroundColor(AppTheme.accent)
                     .monospacedDigit()
                 Spacer()
                 Button("跳过") {
-                    stopLocalTimer()
-                    withAnimation { restingAfterSetIndex = nil }
+                    // Caller (TrainViewWireframe) handles skip via onSkip pattern;
+                    // here we just clear the local flag visually
+                    withAnimation { isRestingForThisExercise = false }
                 }
                 .font(.caption.bold())
                 .foregroundColor(AppTheme.textSecondary)
@@ -337,11 +379,8 @@ struct ExerciseDetailsView: View {
                     Capsule().fill(AppTheme.border).frame(height: 5)
                     Capsule()
                         .fill(AppTheme.accent)
-                        .frame(
-                            width: geo.size.width * CGFloat(localRestRemaining) / CGFloat(max(1, localRestTotal)),
-                            height: 5
-                        )
-                        .animation(.linear(duration: 1), value: localRestRemaining)
+                        .frame(width: geo.size.width * CGFloat(remaining) / CGFloat(total), height: 5)
+                        .animation(.linear(duration: 0.2), value: remaining)
                 }
             }
             .frame(height: 5)
@@ -352,15 +391,22 @@ struct ExerciseDetailsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
+    private var restTimerLabel: String {
+        switch restTimer.state {
+        case .running(let r): return "休息 \(r)s"
+        case .paused(let r):  return "已暂停 \(r)s"
+        case .off:            return "休息完毕"
+        }
+    }
+
     // MARK: Stats Footer
 
     private var statsFooter: some View {
         let done = setLogs.filter(\.isCompleted).count
-        let totalReps = setLogs.filter { $0.isCompleted && !isHoldType }
-            .reduce(0) { $0 + ($1.reps ?? 0) }
+        let totalReps = setLogs.filter { $0.isCompleted && !isHoldType }.reduce(0) { $0 + ($1.reps ?? 0) }
         return Text(
             isHoldType
-                ? "\(done)/\(targetSets) 组完成 · 休息建议 \(restSec)s"
+                ? "\(done)/\(targetSets) 组完成 · 休息 \(restSec)s"
                 : "\(done)/\(targetSets) 组完成 · 总次数 \(totalReps) · 休息 \(restSec)s"
         )
         .font(.caption)
@@ -382,13 +428,8 @@ struct ExerciseDetailsView: View {
         guard index < setLogs.count else { return }
         var log = setLogs[index]
         log.isCompleted = true
-        // Ensure a sensible fallback if user never touched the stepper
-        if !isHoldType && (log.reps == nil || log.reps == 0) {
-            log.reps = routineExercise?.repTarget ?? 0
-        }
-        if isHoldType && (log.holdSec == nil || log.holdSec == 0) {
-            log.holdSec = routineExercise?.holdSecDefault ?? 0
-        }
+        if !isHoldType && (log.reps == nil || log.reps == 0) { log.reps = routineExercise?.repTarget ?? 0 }
+        if isHoldType  && (log.holdSec == nil || log.holdSec == 0) { log.holdSec = routineExercise?.holdSecDefault ?? 0 }
         setLogs[index] = log
         persistSetLog(at: index, log: log)
 
@@ -396,44 +437,13 @@ struct ExerciseDetailsView: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         #endif
 
-        // Start local inline rest countdown
         if restSec > 0 {
-            startLocalRest(seconds: restSec, afterIndex: index)
+            lastRestTotal = restSec
+            // Mark THIS exercise as the one that triggered rest, before calling parent
+            withAnimation { isRestingForThisExercise = true }
+            // Delegate rest start to parent — single source of truth
+            onSetCompleted(restSec)
         }
-
-        // Tell parent (TrainViewWireframe / TrainView) to also start its global timer
-        NotificationCenter.default.post(
-            name: NSNotification.Name("StartRestTimer"),
-            object: nil,
-            userInfo: ["restSeconds": restSec]
-        )
-    }
-
-    // MARK: Local Rest Timer
-
-    private func startLocalRest(seconds: Int, afterIndex: Int) {
-        stopLocalTimer()
-        localRestRemaining = seconds
-        localRestTotal = seconds
-        withAnimation { restingAfterSetIndex = afterIndex }
-        localTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            DispatchQueue.main.async {
-                if self.localRestRemaining > 0 {
-                    self.localRestRemaining -= 1
-                } else {
-                    self.stopLocalTimer()
-                    withAnimation { self.restingAfterSetIndex = nil }
-                    #if os(iOS)
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    #endif
-                }
-            }
-        }
-    }
-
-    private func stopLocalTimer() {
-        localTimer?.invalidate()
-        localTimer = nil
     }
 
     // MARK: Persistence
@@ -441,16 +451,16 @@ struct ExerciseDetailsView: View {
     private func persistSetLog(at index: Int, log: SetLogEntry) {
         if let existing = sessionExercise.sets?.first(where: { $0.setIndex == index }) {
             existing.isCompleted = true
-            existing.reps       = log.reps ?? 0
-            existing.holdSec    = log.holdSec
-            existing.weightKg   = log.weightKg
-            existing.rir        = 1
+            existing.reps        = log.reps ?? 0
+            existing.holdSec     = log.holdSec
+            existing.weightKg    = log.weightKg
+            existing.rir         = log.rir
         } else {
             let entry = SetEntry(
                 sessionExercise: sessionExercise,
                 setIndex:        index,
                 reps:            log.reps ?? 0,
-                rir:             1,
+                rir:             log.rir,
                 restSecondsUsed: 0,
                 holdSec:         log.holdSec,
                 weightKg:        log.weightKg,
@@ -470,61 +480,48 @@ struct ExerciseDetailsView: View {
         for i in 0..<targetSets {
             if let set = existingSets.first(where: { $0.setIndex == i }) {
                 logs.append(SetLogEntry(
-                    setIndex:    i,
-                    isCompleted: set.isCompleted,
-                    reps:        set.reps > 0 ? set.reps : nil,
-                    holdSec:     set.holdSec,
-                    weightKg:    set.weightKg
+                    setIndex: i, isCompleted: set.isCompleted,
+                    reps: set.reps > 0 ? set.reps : nil,
+                    holdSec: set.holdSec, weightKg: set.weightKg, rir: set.rir
                 ))
             } else {
-                // Cascade: previous-session actual → plan default
                 let prev = previousSetData[safe: i]
                 logs.append(SetLogEntry(
-                    setIndex:    i,
-                    isCompleted: false,
-                    reps:        prev?.reps     ?? routineExercise?.repTarget,
-                    holdSec:     prev?.holdSec  ?? routineExercise?.holdSecDefault,
-                    weightKg:    prev?.weightKg ?? routineExercise?.weightKgDefault
+                    setIndex: i, isCompleted: false,
+                    reps:     prev?.reps     ?? routineExercise?.repTarget,
+                    holdSec:  prev?.holdSec  ?? routineExercise?.holdSecDefault,
+                    weightKg: prev?.weightKg ?? routineExercise?.weightKgDefault,
+                    rir:      prev?.rir      ?? 1
                 ))
             }
         }
         setLogs = logs
     }
 
-    /// Fetch the most recent completed session's data for this exercise.
     private func loadPreviousSessionData() {
         guard let exerciseId       = sessionExercise.exercise?.id,
               let currentSessionId = sessionExercise.session?.id else { return }
-
         let allSE = (try? modelContext.fetch(FetchDescriptor<SessionExercise>())) ?? []
         let previousSEs = allSE
             .filter { $0.exercise?.id == exerciseId && $0.session?.id != currentSessionId }
             .sorted { ($0.session?.startAt ?? .distantPast) > ($1.session?.startAt ?? .distantPast) }
-
         guard let lastSE   = previousSEs.first,
               let lastSets = lastSE.sets?.sorted(by: { $0.setIndex < $1.setIndex }),
               !lastSets.isEmpty else { return }
-
         previousSetData = lastSets.map { set in
-            SetLogEntry(
-                setIndex:    set.setIndex,
-                isCompleted: false,
-                reps:        set.reps > 0 ? set.reps : nil,
-                holdSec:     set.holdSec,
-                weightKg:    set.weightKg
-            )
+            SetLogEntry(setIndex: set.setIndex, isCompleted: false,
+                        reps: set.reps > 0 ? set.reps : nil,
+                        holdSec: set.holdSec, weightKg: set.weightKg, rir: set.rir)
         }
         usingPreviousData = true
     }
 
     private func defaultSetLog(at index: Int) -> SetLogEntry {
-        SetLogEntry(
-            setIndex:    index,
-            isCompleted: false,
-            reps:        routineExercise?.repTarget,
-            holdSec:     routineExercise?.holdSecDefault,
-            weightKg:    routineExercise?.weightKgDefault
-        )
+        SetLogEntry(setIndex: index, isCompleted: false,
+                    reps: routineExercise?.repTarget,
+                    holdSec: routineExercise?.holdSecDefault,
+                    weightKg: routineExercise?.weightKgDefault,
+                    rir: 1)
     }
 
     private func planDescription(for re: RoutineExercise) -> String {
@@ -544,9 +541,10 @@ struct SetLogEntry {
     var reps: Int?
     var holdSec: Int?
     var weightKg: Double?
+    var rir: Int = 1
 }
 
-// MARK: - Inline Field Components (kept for compatibility with Routines views)
+// MARK: - Inline field components (kept for Routines views compatibility)
 
 struct InlineNumberField: View {
     @Binding var value: Int?
@@ -618,4 +616,4 @@ struct InlineDoubleField: View {
     }
 }
 
-// subscript(safe:) is defined in TrainViewWireframe.swift as a global Array extension
+// subscript(safe:) is defined in TrainViewWireframe.swift

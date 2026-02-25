@@ -145,9 +145,9 @@ struct FloatingWorkoutBall: View {
                     )
             }
             
-            // 中心文字：显示倒计时或"训"
+            // 中心文字：18pt bold，确保 1 米外也清晰可读
             Text(centerText)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 18, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundColor(.primary)
         }
@@ -167,7 +167,8 @@ struct FloatingWorkoutBall: View {
     
     /// 拖动手势
     private func dragGesture(in frame: CGRect) -> some Gesture {
-        DragGesture(minimumDistance: 0)
+        // minimumDistance: 15 — prevents drag from stealing single/double-tap events
+        DragGesture(minimumDistance: 15)
             .onChanged { value in
                 if !isDragging {
                     isDragging = true
