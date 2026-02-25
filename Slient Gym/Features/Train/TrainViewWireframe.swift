@@ -87,7 +87,8 @@ struct TrainViewWireframe: View {
             }
         }
         .padding(.horizontal)
-        .padding(.bottom, 100)
+        // 130pt = Tab Bar (~83) + 悬浮球直径 (56) + 余量，防止回弹遮挡
+        .padding(.bottom, 130)
     }
 
     @ViewBuilder

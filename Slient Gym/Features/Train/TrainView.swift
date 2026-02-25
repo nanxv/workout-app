@@ -325,10 +325,18 @@ struct TrainView: View {
                     Text("无活动动作")
                         .foregroundColor(AppTheme.textSecondary)
                 }
+
+                // 底部安全缓冲：撑开滚动区域，避免内容被 Tab Bar 和悬浮球遮挡
+                // 130pt = 底部导航高度(~83) + 悬浮球直径(56) + 余量
+                Color.clear.frame(height: 130)
             }
             .padding(.vertical)
         }
         .scrollIndicators(.hidden)
+        // 额外保险：把可滚动内容推入安全区内边距，防止系统 Tab Bar 遮挡底部
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 0)
+        }
     }
     
     private func restTimerOverlay(remaining: Int) -> some View {
