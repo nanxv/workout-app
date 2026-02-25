@@ -20,12 +20,14 @@ struct Slient_GymApp: App {
             SetEntry.self,
             ExternalWorkout.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration("SlientGym", schema: schema, isStoredInMemoryOnly: false)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // Final fallback: in-memory store to avoid launch crash.
+            let fallback = ModelConfiguration("SlientGymInMemory", schema: schema, isStoredInMemoryOnly: true)
+            return (try? ModelContainer(for: schema, configurations: [fallback]))!
         }
     }()
 
@@ -58,3 +60,4 @@ struct Slient_GymApp: App {
         .modelContainer(sharedModelContainer)
     }
 }
+

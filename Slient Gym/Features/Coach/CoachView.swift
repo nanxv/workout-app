@@ -11,6 +11,7 @@ import SwiftData
 struct CoachView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var sessionCoordinator: SessionCoordinator
+    @Query(sort: \Routine.name) private var routines: [Routine]
     @State private var inputText: String = ""
     @State private var messages: [ChatMessage] = []
     @State private var pendingAction: AppAction?
@@ -26,14 +27,31 @@ struct CoachView: View {
     var body: some View {
         NavigationStack {
             VStack {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        ForEach(messages) { message in
-                            ChatBubble(message: message)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 12) {
+                            ForEach(messages) { message in
+                                ChatBubble(message: message)
+                                    .id(message.id)
+                            }
+                            
+                            if messages.isEmpty {
+                                emptyStateView
+                            }
+                        }
+                        .padding()
+                    }
+                    .scrollIndicators(.hidden)
+                    .onChange(of: messages.count) { _, _ in
+                        if let lastId = messages.last?.id {
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                proxy.scrollTo(lastId, anchor: .bottom)
+                            }
                         }
                     }
-                    .padding()
                 }
+                
+                quickActionsBar
                 
                 HStack {
                     TextField("询问教练...", text: $inputText)
@@ -47,23 +65,27 @@ struct CoachView: View {
                     }) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.title2)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.primary)
                     }
                     .disabled(inputText.isEmpty)
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.bottom, 8)
             }
             .navigationTitle("教练")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Toggle("AI", isOn: $useOpenAI)
-                        .toggleStyle(.switch)
-                        .help("使用 OpenAI（需要后端支持）")
+                    Menu {
+                        Toggle("使用 AI", isOn: $useOpenAI)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
                 }
             }
             .onAppear {
                 sessionCoordinator.modelContext = modelContext
             }
+            .animation(.easeInOut(duration: 0.2), value: messages.count)
             .sheet(isPresented: $showConfirmSheet) {
                 if let action = pendingAction {
                     ConfirmActionSheet(action: action, onConfirm: {
@@ -83,7 +105,9 @@ struct CoachView: View {
         guard !inputText.isEmpty else { return }
         
         let userMessage = ChatMessage(content: inputText, isUser: true)
-        messages.append(userMessage)
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+            messages.append(userMessage)
+        }
         
         let command = inputText
         inputText = ""
@@ -97,7 +121,7 @@ struct CoachView: View {
                 #if os(iOS)
                 let context = AppContext(
                     currentState: String(describing: sessionCoordinator.state),
-                    currentRoutine: sessionCoordinator.currentSession?.routine?.name,
+                    currentRoutine: sessionCoordinator.currentSession?.routineNameSnapshot,
                     currentExercise: nil, // Could be enhanced
                     availableRoutines: []
                 )
@@ -125,10 +149,17 @@ struct CoachView: View {
                         content: "I didn't understand that command. Try:\n- 开始 Day A\n- 结束训练\n- 跳过休息\n- 总结",
                         isUser: false
                     )
-                    messages.append(coachMessage)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        messages.append(coachMessage)
+                    }
                 }
             }
         }
+    }
+
+    private func sendQuick(_ text: String) {
+        inputText = text
+        sendMessage()
     }
     
     private func needsConfirmationForAction(_ action: AppAction) -> Bool {
@@ -148,26 +179,38 @@ struct CoachView: View {
             if let routines = try? modelContext.fetch(descriptor),
                let routine = routines.first(where: { $0.name == nameOrId || $0.id.uuidString == nameOrId }) {
                 _ = sessionCoordinator.startSession(routineId: routine.id)
-                messages.append(ChatMessage(content: "Started \(routine.name)", isUser: false))
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                    messages.append(ChatMessage(content: "Started \(routine.name)", isUser: false))
+                }
             } else {
-                messages.append(ChatMessage(content: "Routine '\(nameOrId)' not found", isUser: false))
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                    messages.append(ChatMessage(content: "Routine '\(nameOrId)' not found", isUser: false))
+                }
             }
             
         case .endSession:
             sessionCoordinator.endSession()
-            messages.append(ChatMessage(content: "Session ended", isUser: false))
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                messages.append(ChatMessage(content: "Session ended", isUser: false))
+            }
             
         case .updateExerciseConfig(let exerciseName, _, _):
             // This would update the current routine's exercise config
-            messages.append(ChatMessage(content: "Updated \(exerciseName) config", isUser: false))
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                messages.append(ChatMessage(content: "Updated \(exerciseName) config", isUser: false))
+            }
             
         case .extendRest(let seconds):
             sessionCoordinator.extendRest(by: seconds)
-            messages.append(ChatMessage(content: "Extended rest by \(seconds) seconds", isUser: false))
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                messages.append(ChatMessage(content: "Extended rest by \(seconds) seconds", isUser: false))
+            }
             
         case .skipRest:
             sessionCoordinator.skipRest()
-            messages.append(ChatMessage(content: "Skipped rest", isUser: false))
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                messages.append(ChatMessage(content: "Skipped rest", isUser: false))
+            }
             
         case .addToCalendar(let sessionId):
             // Add to calendar
@@ -179,17 +222,23 @@ struct CoachView: View {
                 if let session = try? modelContext.fetch(descriptor).first {
                     addSessionToCalendar(session: session)
                 } else {
-                    messages.append(ChatMessage(content: "未找到训练记录", isUser: false))
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        messages.append(ChatMessage(content: "未找到训练记录", isUser: false))
+                    }
                 }
             } else if let currentSession = sessionCoordinator.currentSession {
                 addSessionToCalendar(session: currentSession)
             } else {
-                messages.append(ChatMessage(content: "没有活动训练可添加到日历", isUser: false))
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                    messages.append(ChatMessage(content: "没有活动训练可添加到日历", isUser: false))
+                }
             }
             
         case .summarize(let period):
             let summary = generateSummary(period: period)
-            messages.append(ChatMessage(content: summary, isUser: false))
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                messages.append(ChatMessage(content: summary, isUser: false))
+            }
         }
     }
     
@@ -208,7 +257,9 @@ struct CoachView: View {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first,
               let rootViewController = window.rootViewController else {
-            messages.append(ChatMessage(content: "无法访问视图控制器", isUser: false))
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                messages.append(ChatMessage(content: "无法访问视图控制器", isUser: false))
+            }
             return
         }
         
@@ -225,9 +276,13 @@ struct CoachView: View {
             if let eventId = eventId {
                 session.calendarEventId = eventId
                 try? modelContext.save()
-                messages.append(ChatMessage(content: "已成功添加到日历", isUser: false))
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                    messages.append(ChatMessage(content: "已成功添加到日历", isUser: false))
+                }
             } else {
-                messages.append(ChatMessage(content: "添加到日历失败", isUser: false))
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                    messages.append(ChatMessage(content: "添加到日历失败", isUser: false))
+                }
             }
         }
     }
@@ -251,15 +306,75 @@ struct ChatBubble: View {
             }
             
             Text(message.content)
-                .padding()
-                .background(message.isUser ? Color.blue : Color(.systemGray5))
-                .foregroundColor(message.isUser ? .white : .primary)
-                .cornerRadius(16)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(Color(.systemGray6))
+                .foregroundColor(.primary)
+                .cornerRadius(8)
             
             if !message.isUser {
                 Spacer()
             }
         }
+    }
+}
+
+extension CoachView {
+    private var emptyStateView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("你可以这样问")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            ForEach(samplePrompts, id: \.self) { prompt in
+                Button(prompt) {
+                    sendQuick(prompt)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var quickActionsBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Button("开始训练") {
+                    if let routine = routines.first {
+                        sendQuick("开始 \(routine.name)")
+                    } else {
+                        sendQuick("开始训练")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                
+                Button("结束训练") {
+                    sendQuick("结束训练")
+                }
+                .buttonStyle(.bordered)
+                
+                Button("跳过休息") {
+                    sendQuick("跳过休息")
+                }
+                .buttonStyle(.bordered)
+                
+                Button("总结") {
+                    sendQuick("总结")
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 4)
+        }
+    }
+    
+    private var samplePrompts: [String] {
+        [
+            "开始 Day A",
+            "跳过休息",
+            "延长休息 30 秒",
+            "总结"
+        ]
     }
 }
 

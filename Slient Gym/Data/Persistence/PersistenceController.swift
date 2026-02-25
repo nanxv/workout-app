@@ -24,12 +24,13 @@ class PersistenceController {
             ExternalWorkout.self
         ])
         
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration("SlientGym", schema: schema, isStoredInMemoryOnly: false)
         
         do {
             container = try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            let fallback = ModelConfiguration("SlientGymInMemory", schema: schema, isStoredInMemoryOnly: true)
+            container = (try? ModelContainer(for: schema, configurations: [fallback]))!
         }
     }
 }

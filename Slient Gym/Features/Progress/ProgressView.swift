@@ -15,63 +15,40 @@ struct ProgressView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    weeklySummarySection
-                    exerciseTrendsSection
-                }
-                .padding()
+            List {
+                weeklySummarySection
+                exerciseTrendsSection
             }
+            .listStyle(.plain)
             .navigationTitle("进度")
         }
     }
     
     private var weeklySummarySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("本周")
-                .font(.title2)
-                .bold()
-            
+        Section("本周") {
             let weekStats = calculateWeekStats()
-            
-            VStack(spacing: 12) {
-                HStack(spacing: 20) {
-                    StatCard(title: "力量", value: "\(weekStats.strengthMinutes) 分钟", icon: "dumbbell.fill")
-                    StatCard(title: "有氧", value: "\(weekStats.cardioMinutes) 分钟", icon: "figure.run")
-                    StatCard(title: "训练次数", value: "\(weekStats.totalSessions)", icon: "calendar")
-                }
-                
-                if weekStats.totalDistance > 0 {
-                    HStack {
-                        Image(systemName: "map.fill")
-                            .foregroundColor(.blue)
-                        Text("总距离: \(String(format: "%.2f", weekStats.totalDistance)) 公里")
-                            .font(.subheadline)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
-                }
+            LabeledContent("力量", value: "\(weekStats.strengthMinutes) 分钟")
+            LabeledContent("有氧", value: "\(weekStats.cardioMinutes) 分钟")
+            LabeledContent("训练次数", value: "\(weekStats.totalSessions)")
+            if weekStats.totalDistance > 0 {
+                LabeledContent("总距离", value: "\(String(format: "%.2f", weekStats.totalDistance)) 公里")
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
     
     private var exerciseTrendsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("动作趋势")
-                .font(.title2)
-                .bold()
-            
-            // Group exercises and show recent performance
+        Section("动作趋势") {
             let exerciseStats = calculateExerciseStats()
-            
             ForEach(Array(exerciseStats.keys.sorted()), id: \.self) { exerciseName in
                 if let stats = exerciseStats[exerciseName] {
-                    ExerciseTrendCard(exerciseName: exerciseName, stats: stats)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(exerciseName)
+                            .font(.headline)
+                        Text("最佳 \(stats.bestReps) · 总计 \(stats.totalReps) · 平均 RIR \(String(format: "%.1f", stats.avgRIR))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
                 }
             }
         }
@@ -130,78 +107,6 @@ struct ProgressView: View {
         }
         
         return stats.mapValues { (bestReps: $0.bestReps, totalReps: $0.totalReps, avgRIR: Double($0.rirSum) / Double($0.count)) }
-    }
-}
-
-struct StatCard: View {
-    let title: String
-    let value: String
-    let icon: String
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.blue)
-            Text(value)
-                .font(.title3)
-                .bold()
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(10)
-    }
-}
-
-struct ExerciseTrendCard: View {
-    let exerciseName: String
-    let stats: (bestReps: Int, totalReps: Int, avgRIR: Double)
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(exerciseName)
-                .font(.headline)
-            
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("最佳次数")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(stats.bestReps)")
-                        .font(.title3)
-                        .bold()
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing) {
-                    Text("总次数")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(stats.totalReps)")
-                        .font(.title3)
-                        .bold()
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing) {
-                    Text("平均 RIR")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(String(format: "%.1f", stats.avgRIR))
-                        .font(.title3)
-                        .bold()
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(10)
     }
 }
 

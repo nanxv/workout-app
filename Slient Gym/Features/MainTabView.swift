@@ -29,12 +29,8 @@ struct MainTabView: View {
                 .tabItem {
                     Label("进度", systemImage: "chart.line.uptrend.xyaxis")
                 }
-            
-            CoachView()
-                .tabItem {
-                    Label("教练", systemImage: "message.fill")
-                }
         }
+        .tint(.primary)
     }
 }
 

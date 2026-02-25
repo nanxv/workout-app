@@ -395,19 +395,14 @@ struct RoutineDayCardWireframe: View {
                 
                 Spacer()
                 
-                Text(isExpanded ? "▴ 收起" : "▾ 展开")
+                Image(systemName: "chevron.down")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 
                 HStack(spacing: 4) {
                     IconButton(title: "添加到日历", icon: "calendar.badge.plus") {
                         showCalendarSheet = true
-                    }
-                    IconButton(title: "上移", icon: "arrow.up") {
-                        onMoveUp()
-                    }
-                    IconButton(title: "下移", icon: "arrow.down") {
-                        onMoveDown()
                     }
                     IconButton(title: "复制", icon: "doc.on.doc") {
                         onDuplicate()

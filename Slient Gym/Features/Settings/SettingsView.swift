@@ -13,42 +13,40 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Routine.name) private var routines: [Routine]
     @AppStorage("statusCapsuleVisible") private var statusCapsuleVisible = true
-    @AppStorage("compactListStyle") private var compactListStyle = false
+    @AppStorage("autoStartRestTimer") private var autoStartRestTimer = true
+    @AppStorage("minimalMode") private var minimalMode = true
     @State private var showResetAlert = false
+    @State private var showClearHistoryAlert = false
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    // 显示设置
-                    SettingsSection(title: "显示") {
-                        Toggle("训练页显示状态胶囊", isOn: $statusCapsuleVisible)
-                        Toggle("紧凑列表样式", isOn: $compactListStyle)
+            Form {
+                Section("显示") {
+                    Toggle("训练页显示状态胶囊", isOn: $statusCapsuleVisible)
+                    Toggle("极简模式", isOn: $minimalMode)
+                }
+                
+                Section("训练") {
+                    Toggle("自动开始休息", isOn: $autoStartRestTimer)
+                }
+                
+                Section("数据") {
+                    Text("计划数据存储于本机（SwiftData）。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Button("恢复默认训练计划") {
+                        showResetAlert = true
                     }
                     
-                    // 数据设置
-                    SettingsSection(title: "数据") {
-                        Text("计划数据存储于本机（SwiftData）。")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Button(action: {
-                            showResetAlert = true
-                        }) {
-                            Text("恢复默认训练计划")
-                                .font(.subheadline)
-                                .foregroundColor(.primary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
-                        }
+                    Button("清空训练记录") {
+                        showClearHistoryAlert = true
                     }
                 }
-                .padding()
             }
             .navigationTitle("设置")
         }
+        .animation(.easeInOut(duration: 0.2), value: statusCapsuleVisible)
         .alert("恢复默认", isPresented: $showResetAlert) {
             Button("取消", role: .cancel) {}
             Button("确定", role: .destructive) {
@@ -56,6 +54,14 @@ struct SettingsView: View {
             }
         } message: {
             Text("这将清除所有现有训练计划并恢复默认计划。此操作不可撤销。")
+        }
+        .alert("清空记录", isPresented: $showClearHistoryAlert) {
+            Button("取消", role: .cancel) {}
+            Button("清空", role: .destructive) {
+                clearHistory()
+            }
+        } message: {
+            Text("将删除所有训练记录与导入的有氧数据。此操作不可撤销。")
         }
     }
     
@@ -108,28 +114,21 @@ struct SettingsView: View {
         
         try? modelContext.save()
     }
-}
 
-struct SettingsSection<Content: View>: View {
-    let title: String
-    let content: Content
-    
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-            content
+    private func clearHistory() {
+        let sessionDescriptor = FetchDescriptor<Session>()
+        let externalDescriptor = FetchDescriptor<ExternalWorkout>()
+        if let sessions = try? modelContext.fetch(sessionDescriptor) {
+            for session in sessions {
+                modelContext.delete(session)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        if let workouts = try? modelContext.fetch(externalDescriptor) {
+            for workout in workouts {
+                modelContext.delete(workout)
+            }
+        }
+        try? modelContext.save()
     }
 }
 

@@ -12,6 +12,7 @@ import SwiftData
 final class Session {
     @Attribute(.unique) var id: UUID
     var routine: Routine?
+    var routineNameSnapshot: String
     var startAt: Date
     var endAt: Date?
     var healthWorkoutUUID: UUID?
@@ -29,6 +30,7 @@ final class Session {
     ) {
         self.id = id
         self.routine = routine
+        self.routineNameSnapshot = routine?.name ?? "未知训练计划"
         self.startAt = startAt
         self.endAt = endAt
         self.healthWorkoutUUID = healthWorkoutUUID

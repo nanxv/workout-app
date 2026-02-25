@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Slient Gym - UI/UX Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f2f2f7;
+            color: #000;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 83px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding-top: 8px;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+            z-index: 1000;
+        }
+
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 0;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .tab-item.active {
+            opacity: 1;
+        }
+
+        .tab-item:not(.active) {
+            opacity: 0.6;
+        }
+
+        .tab-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .tab-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* Content Area */
+        .content {
+            padding-bottom: 100px;
+            min-height: 100vh;
+        }
+
+        /* Navigation Bar */
+        .nav-bar {
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+            padding: 8px 16px;
+            z-index: 100;
+        }
+
+        .nav-title {
+            font-size: 17px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Status Capsule */
+        .status-capsule {
+            margin: 8px 16px;
+            background: #f2f2f7;
+            border-radius: 12px;
+            padding: 8px 12px;
+        }
+
+        .status-capsule-compact {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .status-dot.green { background: #34c759; }
+        .status-dot.orange { background: #ff9500; }
+        .status-dot.gray { background: #8e8e93; }
+
+        /* Card */
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            margin: 12px 16px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .card-subtitle {
+            font-size: 13px;
+            color: #8e8e93;
+            margin-top: 4px;
+        }
+
+        /* Button */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #f2f2f7;
+            color: #000;
+        }
+
+        .btn-danger {
+            background: #ff3b30;
+            color: #fff;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        /* Routine Card */
+        .routine-card {
+            background: #fff;
+            border-radius: 16px;
+            margin: 12px 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .routine-header {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .routine-info {
+            flex: 1;
+        }
+
+        .routine-name {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .routine-meta {
+            font-size: 13px;
+            color: #8e8e93;
+        }
+
+        /* Floating Ball */
+        .floating-ball {
+            position: fixed;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: move;
+            z-index: 999;
+            transition: transform 0.2s;
+        }
+
+        .floating-ball:active {
+            transform: scale(1.15);
+        }
+
+        .floating-ball-content {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .floating-ball-progress {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 6px solid transparent;
+            border-top-color: #000;
+            transform: rotate(-90deg);
+        }
+
+        /* Panel */
+        .panel {
+            position: fixed;
+            bottom: 100px;
+            left: 16px;
+            right: 16px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 16px;
+            padding: 16px;
+            z-index: 998;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel-drag-handle {
+            width: 36px;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+            margin: 0 auto 12px;
+        }
+
+        /* Filter Buttons */
+        .filter-group {
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            overflow-x: auto;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 15px;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #000;
+            color: #fff;
+        }
+
+        .filter-btn:not(.active) {
+            background: #f2f2f7;
+            color: #000;
+        }
+
+        /* Stat Bar */
+        .stat-bar {
+            margin: 8px 0;
+        }
+
+        .stat-bar-label {
+            font-size: 13px;
+            color: #8e8e93;
+            margin-bottom: 4px;
+        }
+
+        .stat-bar-bg {
+            height: 8px;
+            background: #e5e5ea;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            background: #000;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        /* Chat */
+        .chat-container {
+            padding: 16px;
+            min-height: 400px;
+        }
+
+        .chat-bubble {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            align-items: flex-start;
+        }
+
+        .chat-bubble.user {
+            flex-direction: row-reverse;
+        }
+
+        .chat-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
+        .chat-avatar.coach {
+            background: #000;
+            color: #fff;
+        }
+
+        .chat-avatar.user {
+            background: #e5e5ea;
+            color: #8e8e93;
+        }
+
+        .chat-message {
+            max-width: 280px;
+            padding: 8px 12px;
+            border-radius: 16px;
+            font-size: 15px;
+        }
+
+        .chat-bubble:not(.user) .chat-message {
+            background: #f2f2f7;
+            color: #000;
+        }
+
+        .chat-bubble.user .chat-message {
+            background: #000;
+            color: #fff;
+        }
+
+        .quick-commands {
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            overflow-x: auto;
+        }
+
+        .quick-command {
+            padding: 6px 12px;
+            border-radius: 16px;
+            background: #f2f2f7;
+            font-size: 13px;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* Input */
+        .input-group {
+            display: flex;
+            gap: 8px;
+            padding: 16px;
+            background: #fff;
+        }
+
+        .input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e5e5ea;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        /* Section Title */
+        .section-title {
+            font-size: 22px;
+            font-weight: 600;
+            padding: 16px;
+        }
+
+        /* Hidden */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Exercise Row */
+        .exercise-row {
+            padding: 12px 16px;
+            border-bottom: 0.5px solid #e5e5ea;
+        }
+
+        .exercise-row:last-child {
+            border-bottom: none;
+        }
+
+        .exercise-name {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .exercise-detail {
+            font-size: 13px;
+            color: #8e8e93;
+        }
+
+        /* Icon Buttons */
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #f2f2f7;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        /* Stat Card */
+        .stat-card {
+            flex: 1;
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-card-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card-value {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .stat-card-label {
+            font-size: 13px;
+            color: #8e8e93;
+        }
+
+        .stat-cards {
+            display: flex;
+            gap: 12px;
+            padding: 0 16px;
+        }
+
+        /* Highlight Item */
+        .highlight-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+        }
+
+        .highlight-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #007aff;
+            flex-shrink: 0;
+        }
+
+        /* History Item */
+        .history-item {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-title {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .history-date {
+            font-size: 13px;
+            color: #8e8e93;
+        }
+
+        .history-status {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            color: #8e8e93;
+        }
+
+        .status-badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-badge-dot.ok {
+            background: #34c759;
+        }
+
+        .status-badge-dot.warn {
+            background: #ff9500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+        <div class="tab-item active" data-tab="train">
+            <div class="tab-icon">🏋️</div>
+            <div class="tab-label">训练</div>
+        </div>
+        <div class="tab-item" data-tab="routines">
+            <div class="tab-icon">📋</div>
+            <div class="tab-label">计划</div>
+        </div>
+        <div class="tab-item" data-tab="history">
+            <div class="tab-icon">🕐</div>
+            <div class="tab-label">历史</div>
+        </div>
+        <div class="tab-item" data-tab="progress">
+            <div class="tab-icon">📈</div>
+            <div class="tab-label">进度</div>
+        </div>
+        <div class="tab-item" data-tab="coach">
+            <div class="tab-icon">💬</div>
+            <div class="tab-label">教练</div>
+        </div>
+    </div>
+
+    <!-- Train View -->
+    <div class="content" id="train-view">
+        <div class="nav-bar">
+            <div class="nav-title">训练</div>
+        </div>
+
+        <div class="status-capsule">
+            <div class="status-capsule-compact">
+                <div class="status-dot green"></div>
+                <div class="status-dot orange"></div>
+                <div class="status-dot gray"></div>
+                <div style="flex: 1;"></div>
+                <span style="font-size: 13px; color: #8e8e93;">▾</span>
+            </div>
+        </div>
+
+        <div style="padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h2 style="font-size: 22px; font-weight: 600;">今天</h2>
+                <span style="font-size: 13px; color: #8e8e93; text-decoration: underline; cursor: pointer;">隐藏状态</span>
+            </div>
+        </div>
+
+        <div class="routine-card">
+            <div class="routine-header">
+                <div class="routine-info">
+                    <div class="routine-name">Day A</div>
+                    <div class="routine-meta">俯卧撑 等 · 约 45 分钟</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 13px; color: #8e8e93;">（点击展开）</span>
+                    <button class="btn btn-primary btn-small">开始</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="routine-card">
+            <div class="routine-header">
+                <div class="routine-info">
+                    <div class="routine-name">Day B</div>
+                    <div class="routine-meta">反向划船 等 · 约 30 分钟</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 13px; color: #8e8e93;">（点击展开）</span>
+                    <button class="btn btn-primary btn-small">开始</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Ball -->
+        <div class="floating-ball" id="floating-ball" style="right: 40px; bottom: 140px;">
+            <div class="floating-ball-progress" style="border-top-color: #000; transform: rotate(-90deg);"></div>
+            <div class="floating-ball-content">45</div>
+        </div>
+    </div>
+
+    <!-- Routines View -->
+    <div class="content hidden" id="routines-view">
+        <div class="nav-bar">
+            <div class="nav-title">计划</div>
+        </div>
+
+        <div style="padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="font-size: 22px; font-weight: 600;">计划</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-secondary btn-small">+ 训练模版</button>
+                    <button class="icon-btn">⋯</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="routine-card">
+            <div class="routine-header">
+                <div class="routine-info">
+                    <div class="routine-name">Day A</div>
+                    <div class="routine-meta">3 个动作 · 约 45 分钟</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <span style="font-size: 13px; color: #8e8e93;">▴ 收起</span>
+                    <button class="icon-btn">📅</button>
+                    <button class="icon-btn">↑</button>
+                    <button class="icon-btn">↓</button>
+                    <button class="icon-btn">📄</button>
+                    <button class="icon-btn">🗑️</button>
+                </div>
+            </div>
+            <div style="padding: 0 16px 16px;">
+                <div class="exercise-row">
+                    <div class="exercise-name">俯卧撑</div>
+                    <div class="exercise-detail">计划：4组 × 12次 · 休息：90秒</div>
+                </div>
+                <div class="exercise-row">
+                    <div class="exercise-name">徒手深蹲</div>
+                    <div class="exercise-detail">计划：5组 × 15次 · 休息：120秒</div>
+                </div>
+                <div class="exercise-row">
+                    <div class="exercise-name">平板支撑</div>
+                    <div class="exercise-detail">计划：3组 × 45秒 · 休息：45秒</div>
+                </div>
+                <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;">
+                    <span>+</span> 添加动作
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History View -->
+    <div class="content hidden" id="history-view">
+        <div class="nav-bar">
+            <div class="nav-title">记录</div>
+        </div>
+
+        <div class="filter-group">
+            <button class="filter-btn active">全部</button>
+            <button class="filter-btn">力量</button>
+            <button class="filter-btn">有氧（健康）</button>
+        </div>
+
+        <div style="display: flex; gap: 12px; padding: 0 16px; margin: 16px 0;">
+            <div class="card" style="flex: 1; margin: 0;">
+                <div class="card-title">本周时长（分钟）</div>
+                <div class="stat-bar">
+                    <div class="stat-bar-label">力量 · 120</div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill" style="width: 67%;"></div>
+                    </div>
+                </div>
+                <div class="stat-bar">
+                    <div class="stat-bar-label">跑步 · 45</div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill" style="width: 50%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card" style="flex: 1; margin: 0;">
+                <div class="card-title">训练量（最近 7 次）</div>
+                <div class="stat-bar">
+                    <div class="stat-bar-label">俯卧撑（次数） · 180</div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill" style="width: 82%;"></div>
+                    </div>
+                </div>
+                <div class="stat-bar">
+                    <div class="stat-bar-label">深蹲（次数） · 200</div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill" style="width: 77%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">亮点</div>
+            <div class="highlight-item">
+                <div class="highlight-dot"></div>
+                <div>本周完成 2/3 次训练</div>
+            </div>
+            <div class="highlight-item">
+                <div class="highlight-dot"></div>
+                <div>本周平板支撑最佳：52秒</div>
+            </div>
+        </div>
+
+        <div class="history-item">
+            <div class="history-header">
+                <div>
+                    <div class="history-title">Day A</div>
+                    <div class="history-date">2026年1月3日</div>
+                </div>
+                <div class="history-status">
+                    <div class="status-badge">
+                        <div class="status-badge-dot ok"></div>
+                        <span>健康</span>
+                    </div>
+                    <div class="status-badge">
+                        <div class="status-badge-dot warn"></div>
+                        <span>日历</span>
+                    </div>
+                    <button class="btn btn-secondary btn-small">重试</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress View -->
+    <div class="content hidden" id="progress-view">
+        <div class="nav-bar">
+            <div class="nav-title">进度</div>
+        </div>
+
+        <div class="card">
+            <div class="section-title" style="padding: 0; margin-bottom: 12px;">本周</div>
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-card-icon">🏋️</div>
+                    <div class="stat-card-value">120</div>
+                    <div class="stat-card-label">力量</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon">🏃</div>
+                    <div class="stat-card-value">45</div>
+                    <div class="stat-card-label">有氧</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon">📅</div>
+                    <div class="stat-card-value">5</div>
+                    <div class="stat-card-label">训练次数</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title" style="padding: 0; margin-bottom: 12px;">动作趋势</div>
+            <div class="exercise-row">
+                <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <div>
+                        <div class="exercise-name">俯卧撑</div>
+                        <div class="exercise-detail">最佳次数: 15</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 20px; font-weight: 600;">180</div>
+                        <div style="font-size: 13px; color: #8e8e93;">总次数</div>
+                    </div>
+                </div>
+            </div>
+            <div class="exercise-row">
+                <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <div>
+                        <div class="exercise-name">深蹲</div>
+                        <div class="exercise-detail">最佳次数: 18</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 20px; font-weight: 600;">200</div>
+                        <div style="font-size: 13px; color: #8e8e93;">总次数</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coach View -->
+    <div class="content hidden" id="coach-view">
+        <div class="nav-bar">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="nav-title" style="text-align: left;">教练</div>
+                <span style="font-size: 13px; color: #8e8e93;">极简</span>
+            </div>
+        </div>
+
+        <div class="quick-commands">
+            <button class="quick-command">开始 Day A</button>
+            <button class="quick-command">休息 +30 秒</button>
+            <button class="quick-command">写入日历</button>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-bubble">
+                <div class="chat-avatar coach">教</div>
+                <div class="chat-message">你好！我是你的训练教练。试试输入：'开始 Day A'。</div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <input type="text" class="input" placeholder="与教练对话…（Enter 发送）">
+            <button class="btn btn-primary">发送</button>
+        </div>
+    </div>
+
+    <!-- Floating Ball Panel -->
+    <div class="panel hidden" id="floating-panel">
+        <div class="panel-drag-handle"></div>
+        <div style="text-align: center; font-size: 17px; font-weight: 600; margin-bottom: 12px;">休息中 • 45s</div>
+        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+            <button class="btn btn-primary" style="flex: 1;">+15s</button>
+            <button class="btn btn-secondary" style="flex: 1;">跳过</button>
+        </div>
+        <button class="btn btn-danger" style="width: 100%;">结束训练</button>
+    </div>
+
+    <script>
+        // Tab Navigation
+        const tabItems = document.querySelectorAll('.tab-item');
+        const views = ['train', 'routines', 'history', 'progress', 'coach'];
+
+        tabItems.forEach((item, index) => {
+            item.addEventListener('click', () => {
+                // Update active tab
+                tabItems.forEach(t => t.classList.remove('active'));
+                item.classList.add('active');
+
+                // Show corresponding view
+                views.forEach(view => {
+                    document.getElementById(`${view}-view`).classList.add('hidden');
+                });
+                document.getElementById(`${views[index]}-view`).classList.remove('hidden');
+            });
+        });
+
+        // Floating Ball Drag
+        const floatingBall = document.getElementById('floating-ball');
+        let isDragging = false;
+        let startX, startY, initialX, initialY;
+
+        floatingBall.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = floatingBall.getBoundingClientRect();
+            initialX = rect.left;
+            initialY = rect.top;
+            floatingBall.style.transition = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            const newX = initialX + dx;
+            const newY = initialY + dy;
+            
+            // Constrain to viewport
+            const maxX = window.innerWidth - 56;
+            const maxY = window.innerHeight - 100;
+            const constrainedX = Math.max(8, Math.min(newX, maxX));
+            const constrainedY = Math.max(80, Math.min(newY, maxY));
+            
+            floatingBall.style.left = `${constrainedX}px`;
+            floatingBall.style.top = `${constrainedY}px`;
+            floatingBall.style.right = 'auto';
+            floatingBall.style.bottom = 'auto';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                floatingBall.style.transition = 'transform 0.2s';
+                // Snap to edge
+                const rect = floatingBall.getBoundingClientRect();
+                const centerX = rect.left + 28;
+                const viewportCenter = window.innerWidth / 2;
+                const finalX = centerX < viewportCenter ? 8 : window.innerWidth - 64;
+                floatingBall.style.left = `${finalX}px`;
+                floatingBall.style.right = 'auto';
+            }
+        });
+
+        // Floating Ball Click
+        floatingBall.addEventListener('click', () => {
+            document.getElementById('floating-panel').classList.toggle('hidden');
+        });
+
+        // Touch support for mobile
+        floatingBall.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isDragging = true;
+            const touch = e.touches[0];
+            startX = touch.clientX;
+            startY = touch.clientY;
+            const rect = floatingBall.getBoundingClientRect();
+            initialX = rect.left;
+            initialY = rect.top;
+            floatingBall.style.transition = 'none';
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const dx = touch.clientX - startX;
+            const dy = touch.clientY - startY;
+            const newX = initialX + dx;
+            const newY = initialY + dy;
+            
+            const maxX = window.innerWidth - 56;
+            const maxY = window.innerHeight - 100;
+            const constrainedX = Math.max(8, Math.min(newX, maxX));
+            const constrainedY = Math.max(80, Math.min(newY, maxY));
+            
+            floatingBall.style.left = `${constrainedX}px`;
+            floatingBall.style.top = `${constrainedY}px`;
+            floatingBall.style.right = 'auto';
+            floatingBall.style.bottom = 'auto';
+        });
+
+        document.addEventListener('touchend', () => {
+            if (isDragging) {
+                isDragging = false;
+                floatingBall.style.transition = 'transform 0.2s';
+                const rect = floatingBall.getBoundingClientRect();
+                const centerX = rect.left + 28;
+                const viewportCenter = window.innerWidth / 2;
+                const finalX = centerX < viewportCenter ? 8 : window.innerWidth - 64;
+                floatingBall.style.left = `${finalX}px`;
+                floatingBall.style.right = 'auto';
+            }
+        });
+    </script>
+</body>
+</html>
+
+

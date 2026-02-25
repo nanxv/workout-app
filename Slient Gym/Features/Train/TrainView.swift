@@ -16,10 +16,12 @@ struct TrainView: View {
     @Query(sort: \Routine.name) private var routines: [Routine]
     @StateObject private var sessionCoordinator: SessionCoordinator
     @StateObject private var restTimer = RestTimerManager()
+    @StateObject private var ballState = FloatingBallState()
     @State private var selectedRoutineId: UUID?
     @State private var currentReps: String = ""
     @State private var currentRIR: Int = 1
     @State private var showRestTimer = false
+    @State private var showEndSessionConfirmation = false
     #if os(iOS)
     @State private var showCalendarSheet = false
     @State private var endedSession: Session?
@@ -35,50 +37,145 @@ struct TrainView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                #if os(iOS)
-                if case .idle = sessionCoordinator.state {
-                    StatusCapsuleView()
-                }
-                #endif
-                
-                Group {
-                    switch sessionCoordinator.state {
-                    case .idle:
-                        routineSelectionView
-                case .starting:
-                    VStack {
-                        ProgressView()
-                        Text("正在启动...")
+            ZStack {
+                VStack(spacing: 0) {
+                    #if os(iOS)
+                    if case .idle = sessionCoordinator.state {
+                        StatusCapsuleView()
+                            .padding(.vertical, 4)
                     }
-                case .running(let sessionId, let exerciseIndex, let setIndex):
-                    trainingView(sessionId: sessionId, exerciseIndex: exerciseIndex, setIndex: setIndex)
-                case .resting(let sessionId, let remaining):
-                    // During rest, we should show the current exercise (will be updated after rest)
-                    // For now, use the sessionCoordinator's tracked indices
-                    trainingView(sessionId: sessionId, exerciseIndex: sessionCoordinator.currentExerciseIndex, setIndex: sessionCoordinator.currentSetIndex)
-                        .overlay(restTimerOverlay(remaining: remaining))
-                case .paused:
-                    Text("已暂停")
-                case .ending:
-                    VStack {
-                        ProgressView()
-                        Text("正在结束训练...")
-                    }
-                case .finished:
-                    routineSelectionView
-                case .error(let message):
-                    VStack {
-                        Text("错误: \(message)")
-                        Button("返回") {
-                            sessionCoordinator.state = .idle
+                    #endif
+                    
+                    Group {
+                        switch sessionCoordinator.state {
+                        case .idle:
+                            routineSelectionView
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        case .starting:
+                            VStack {
+                                ProgressView()
+                                Text("正在启动...")
+                            }
+                            .transition(.opacity)
+                        case .running(let sessionId, let exerciseIndex, let setIndex):
+                            trainingView(sessionId: sessionId, exerciseIndex: exerciseIndex, setIndex: setIndex)
+                                .transition(.opacity.combined(with: .move(edge: .trailing)))
+                        case .resting(let sessionId, let remaining):
+                            // During rest, we should show the current exercise (will be updated after rest)
+                            // For now, use the sessionCoordinator's tracked indices
+                            trainingView(sessionId: sessionId, exerciseIndex: sessionCoordinator.currentExerciseIndex, setIndex: sessionCoordinator.currentSetIndex)
+                                .overlay(restTimerOverlay(remaining: remaining))
+                                .transition(.opacity)
+                        case .paused:
+                            Text("已暂停")
+                                .transition(.opacity)
+                        case .ending:
+                            VStack {
+                                ProgressView()
+                                Text("正在结束训练...")
+                            }
+                            .transition(.opacity)
+                        case .finished:
+                            routineSelectionView
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        case .error(let message):
+                            VStack {
+                                Text("错误: \(message)")
+                                Button("返回") {
+                                    sessionCoordinator.state = .idle
+                                }
+                            }
+                            .transition(.opacity)
                         }
                     }
-                    }
                 }
+                
+                FloatingWorkoutBall(
+                    state: ballState,
+                    onSingleTap: {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            ballState.showPanel.toggle()
+                        }
+                    },
+                    onDoubleTap: {
+                        if ballState.isResting {
+                            if case .running = restTimer.state {
+                                restTimer.pause()
+                                ballState.updatePauseState(isPaused: true)
+                            } else if case .paused = restTimer.state {
+                                restTimer.resume()
+                                ballState.updatePauseState(isPaused: false)
+                            }
+                        } else {
+                            if let restSec = getCurrentRestSeconds() {
+                                restTimer.start(seconds: restSec)
+                                sessionCoordinator.startRest(seconds: restSec)
+                            }
+                        }
+                    },
+                    onLongPress: {
+                        showEndSessionConfirmation = true
+                    },
+                    onDragEnd: { point, frame in
+                        snapToEdges(point: point, in: frame)
+                    }
+                )
+            }
+            .sheet(isPresented: $ballState.showPanel) {
+                FloatingBallPanel(
+                    state: ballState,
+                    quickReps: $currentReps,
+                    quickRIR: $currentRIR,
+                    onPlus15: {
+                        restTimer.extend(by: 15)
+                        sessionCoordinator.extendRest(by: 15)
+                    },
+                    onTogglePause: {
+                        if case .running = restTimer.state {
+                            restTimer.pause()
+                            ballState.updatePauseState(isPaused: true)
+                        } else if case .paused = restTimer.state {
+                            restTimer.resume()
+                            ballState.updatePauseState(isPaused: false)
+                        }
+                    },
+                    onSkip: {
+                        restTimer.skip()
+                        sessionCoordinator.restFinished()
+                    },
+                    onStartRest: {
+                        if let restSec = getCurrentRestSeconds() {
+                            restTimer.start(seconds: restSec)
+                            sessionCoordinator.startRest(seconds: restSec)
+                        }
+                    },
+                    onCompleteSet: {
+                        if let reps = Int(currentReps) {
+                            sessionCoordinator.completeSet(reps: reps, rir: currentRIR)
+                            currentReps = ""
+                            currentRIR = 1
+                        }
+                    },
+                    onEnd: {
+                        sessionCoordinator.endSession()
+                        ballState.showPanel = false
+                    }
+                )
+                .presentationDetents([.height(360)])
+            }
+            .alert("结束训练", isPresented: $showEndSessionConfirmation) {
+                Button("取消", role: .cancel) {}
+                Button("确认", role: .destructive) {
+                    sessionCoordinator.endSession()
+                    ballState.showPanel = false
+                }
+            } message: {
+                Text("确定要结束当前训练吗？")
             }
             .navigationTitle("训练")
         }
+            .background(Color(.systemBackground))
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sessionCoordinator.state)
         .onAppear {
             // Update sessionCoordinator with actual modelContext
             sessionCoordinator.modelContext = modelContext
@@ -89,25 +186,57 @@ struct TrainView: View {
         }
         .onChange(of: sessionCoordinator.state) { oldValue, newValue in
             handleStateChange(newValue)
+            updateBallExerciseInfo()
+        }
+        .onChange(of: sessionCoordinator.currentSession) { oldValue, newValue in
+            ballState.isVisible = newValue != nil
+            if newValue == nil {
+                ballState.showPanel = false
+                ballState.updateSubtitle(nil)
+                ballState.updateExerciseInfo(name: nil, setIndex: 0, totalSets: 0, nextName: nil)
+            } else {
+                ballState.updateSubtitle(getCurrentExerciseSubtitle())
+                updateBallExerciseInfo()
+            }
+        }
+        .onChange(of: restTimer.state) { oldValue, newValue in
+            switch newValue {
+            case .running(let remaining):
+                let totalRest = getCurrentRestSeconds() ?? 90
+                ballState.updateRestState(
+                    isActive: true,
+                    remaining: TimeInterval(remaining),
+                    total: TimeInterval(totalRest)
+                )
+                ballState.updatePauseState(isPaused: false)
+            case .paused(let remaining):
+                ballState.updateRestState(
+                    isActive: true,
+                    remaining: TimeInterval(remaining),
+                    total: ballState.restTotal > 0 ? ballState.restTotal : TimeInterval(remaining)
+                )
+                ballState.updatePauseState(isPaused: true)
+            case .off:
+                ballState.updateRestState(isActive: false, remaining: 0, total: 0)
+                ballState.updatePauseState(isPaused: false)
+            }
         }
         // 移除自动弹出日历的 sheet，用户可以通过其他方式手动添加
     }
     
     private var routineSelectionView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 12) {
             Text("选择训练计划")
-                .font(.title2)
-                .padding()
-            
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.top, 8)
             if routines.isEmpty {
-                VStack(spacing: 12) {
-                    Text("暂无训练计划")
-                        .foregroundColor(.secondary)
-                    Text("请检查示例数据是否已生成")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
+                Text("暂无训练计划")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
             } else {
                 List(routines) { routine in
                     Button(action: {
@@ -137,18 +266,16 @@ struct TrainView: View {
                         }
                         #endif
                     }) {
-                        HStack {
-                            Text(routine.name)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "play.circle.fill")
-                                .foregroundColor(.blue)
-                        }
+                        Text(routine.name)
+                            .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
                 }
+                .listStyle(.plain)
+                .scrollIndicators(.hidden)
             }
         }
+        .padding(.bottom, 4)
     }
     
     private func trainingView(sessionId: UUID, exerciseIndex: Int, setIndex: Int) -> some View {
@@ -162,33 +289,20 @@ struct TrainView: View {
                 let routineExercise = getRoutineExercise(for: sessionExercise)
                 let targetSets = max(1, routineExercise?.targetSets ?? 3) // 确保至少为 1
                 
-                VStack(spacing: 20) {
-                    // Exercise name
+                VStack(spacing: 16) {
                     Text(exercise?.name ?? "未知动作")
-                        .font(.largeTitle)
-                        .bold()
-                        .padding()
+                        .font(.title2)
+                        .fontWeight(.semibold)
                     
-                    // Set progress
-                    Text("第 \(setIndex + 1) 组 / 共 \(targetSets) 组")
-                        .font(.title3)
+                    Text("第 \(setIndex + 1) / \(targetSets) 组")
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    // Reps input
-                    VStack(alignment: .leading) {
-                        Text("次数")
-                            .font(.headline)
-                        TextField("输入次数", text: $currentReps)
+                    VStack(alignment: .leading, spacing: 10) {
+                        TextField("次数", text: $currentReps)
                             .keyboardType(.numberPad)
                             .textFieldStyle(.roundedBorder)
-                            .font(.title2)
-                    }
-                    .padding()
-                    
-                    // RIR input
-                    VStack(alignment: .leading) {
-                        Text("RIR (保留次数)")
-                            .font(.headline)
+                        
                         Picker("RIR", selection: $currentRIR) {
                             ForEach(0...4, id: \.self) { value in
                                 Text("\(value)").tag(value)
@@ -196,43 +310,24 @@ struct TrainView: View {
                         }
                         .pickerStyle(.segmented)
                     }
-                    .padding()
                     
-                    // Complete set button
-                    Button(action: {
+                    Button("完成一组") {
                         if let reps = Int(currentReps) {
                             sessionCoordinator.completeSet(reps: reps, rir: currentRIR)
                             currentReps = ""
                             currentRIR = 1
                         }
-                    }) {
-                        Text("完成一组")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(10)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.primary)
                     .disabled(currentReps.isEmpty)
-                    .padding()
                     
-                    Spacer()
-                    
-                    // End session button
-                    Button(action: {
+                    Button("结束训练") {
                         sessionCoordinator.endSession()
-                    }) {
-                        Text("结束训练")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red)
-                            .cornerRadius(10)
                     }
-                    .padding()
+                    .buttonStyle(.bordered)
                 }
+                .padding(.horizontal)
             } else {
                 Text("无活动动作")
             }
@@ -241,51 +336,32 @@ struct TrainView: View {
     
     private func restTimerOverlay(remaining: Int) -> some View {
         ZStack {
-            Color.black.opacity(0.7)
+            Color.black.opacity(0.5)
                 .ignoresSafeArea()
             
-            VStack(spacing: 30) {
+            VStack(spacing: 16) {
                 Text("休息")
-                    .font(.largeTitle)
+                    .font(.headline)
                     .foregroundColor(.white)
                 
-                Text("\(restTimer.remainingSeconds)秒")
-                    .font(.system(size: 72, weight: .bold))
+                Text("\(restTimer.remainingSeconds)s")
+                    .font(.system(size: 48, weight: .semibold))
                     .foregroundColor(.white)
                 
-                HStack(spacing: 20) {
-                    Button(action: {
+                HStack(spacing: 12) {
+                    Button("+15s") {
                         sessionCoordinator.extendRest(by: 15)
                         restTimer.extend(by: 15)
-                    }) {
-                        Text("+15秒")
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.blue.opacity(0.7))
-                            .cornerRadius(8)
                     }
+                    .buttonStyle(.bordered)
+                    .tint(.white)
                     
-                    Button(action: {
-                        sessionCoordinator.extendRest(by: 30)
-                        restTimer.extend(by: 30)
-                    }) {
-                        Text("+30秒")
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.blue.opacity(0.7))
-                            .cornerRadius(8)
-                    }
-                    
-                    Button(action: {
+                    Button("跳过") {
                         sessionCoordinator.skipRest()
                         restTimer.skip()
-                    }) {
-                        Text("跳过")
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.red.opacity(0.7))
-                            .cornerRadius(8)
                     }
+                    .buttonStyle(.bordered)
+                    .tint(.white)
                 }
             }
         }
@@ -299,11 +375,79 @@ struct TrainView: View {
         }
         return routine.exercises?.first { $0.exercise?.id == exercise.id }
     }
+
+    private func getCurrentExerciseSubtitle() -> String? {
+        guard let session = sessionCoordinator.currentSession,
+              let exercises = session.exercises?.sorted(by: { $0.order < $1.order }),
+              let currentExercise = exercises[safe: sessionCoordinator.currentExerciseIndex],
+              let routineExercise = getRoutineExercise(for: currentExercise) else {
+            return nil
+        }
+        
+        let sets = routineExercise.targetSets
+        let detail: String
+        if routineExercise.isHoldType, let holdSec = routineExercise.holdSecDefault {
+            detail = "×\(holdSec)秒"
+        } else if let repTarget = routineExercise.repTarget {
+            detail = "×\(repTarget)次"
+        } else {
+            detail = ""
+        }
+        
+        return "\(currentExercise.exercise?.name ?? "") · \(sets)组\(detail) · 休\(routineExercise.restSecondsDefault)秒"
+    }
+
+    private func getCurrentRestSeconds() -> Int? {
+        guard let session = sessionCoordinator.currentSession,
+              let exercises = session.exercises?.sorted(by: { $0.order < $1.order }),
+              let currentExercise = exercises[safe: sessionCoordinator.currentExerciseIndex],
+              let routineExercise = getRoutineExercise(for: currentExercise) else {
+            return 90
+        }
+        return routineExercise.restSecondsDefault
+    }
+
+    private func updateBallExerciseInfo() {
+        guard let session = sessionCoordinator.currentSession,
+              let exercises = session.exercises?.sorted(by: { $0.order < $1.order }),
+              !exercises.isEmpty else {
+            ballState.updateExerciseInfo(name: nil, setIndex: 0, totalSets: 0, nextName: nil)
+            return
+        }
+        
+        let currentIndex = min(sessionCoordinator.currentExerciseIndex, exercises.count - 1)
+        let currentExercise = exercises[safe: currentIndex]
+        let routineExercise = currentExercise.map { getRoutineExercise(for: $0) } ?? nil
+        let totalSets = max(1, routineExercise?.targetSets ?? 1)
+        
+        let completedSets: Int
+        switch sessionCoordinator.state {
+        case .resting:
+            completedSets = min(sessionCoordinator.currentSetIndex + 1, totalSets)
+        default:
+            completedSets = min(sessionCoordinator.currentSetIndex, totalSets)
+        }
+        
+        let nextName: String?
+        if currentIndex + 1 < exercises.count {
+            nextName = exercises[currentIndex + 1].exercise?.name
+        } else {
+            nextName = nil
+        }
+        
+        ballState.updateExerciseInfo(
+            name: currentExercise?.exercise?.name,
+            setIndex: completedSets,
+            totalSets: totalSets,
+            nextName: nextName
+        )
+    }
     
     private func handleStateChange(_ newState: TrainingSessionState) {
         switch newState {
         case .resting(_, let remaining):
             showRestTimer = true
+            ballState.updateSubtitle(getCurrentExerciseSubtitle())
             if case .off = restTimer.state {
                 restTimer.start(seconds: remaining)
             } else {
@@ -321,6 +465,25 @@ struct TrainView: View {
                     // State is already correct, just update display
                 }
             }
+            ballState.updateRestState(
+                isActive: true,
+                remaining: TimeInterval(remaining),
+                total: TimeInterval(remaining)
+            )
+            ballState.updatePauseState(isPaused: false)
+        case .running:
+            ballState.updateSubtitle(getCurrentExerciseSubtitle())
+            ballState.updatePauseState(isPaused: false)
+            updateBallExerciseInfo()
+        case .paused:
+            ballState.updateSubtitle(getCurrentExerciseSubtitle())
+            updateBallExerciseInfo()
+        case .finished:
+            ballState.isVisible = false
+            ballState.showPanel = false
+            ballState.updateSubtitle(nil)
+            ballState.updatePauseState(isPaused: false)
+            ballState.updateExerciseInfo(name: nil, setIndex: 0, totalSets: 0, nextName: nil)
         default:
             showRestTimer = false
             restTimer.stop()

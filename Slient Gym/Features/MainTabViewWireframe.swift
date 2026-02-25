@@ -9,25 +9,7 @@
 import SwiftUI
 
 struct MainTabViewWireframe: View {
-    @State private var selectedTab: TabItem = .train
-    
-    enum TabItem: String, CaseIterable {
-        case routines = "计划"
-        case records = "记录"
-        case train = "训练"
-        case coach = "教练"
-        case settings = "设置"
-        
-        var icon: String {
-            switch self {
-            case .routines: return "list.bullet"
-            case .records: return "clock.fill"
-            case .train: return "dumbbell.fill"
-            case .coach: return "message.fill"
-            case .settings: return "gearshape.fill"
-            }
-        }
-    }
+    @State private var selectedTab: AppTab = .train
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -35,13 +17,11 @@ struct MainTabViewWireframe: View {
             Group {
                 switch selectedTab {
                 case .train:
-                    TrainViewWireframe()
+                    TrainViewWireframe(currentTab: $selectedTab)
                 case .routines:
                     RoutinesViewWireframe()
                 case .records:
-                    HistoryViewWireframe()
-                case .coach:
-                    CoachViewWireframe()
+                    HistoryView()
                 case .settings:
                     SettingsView()
                 }
@@ -51,17 +31,24 @@ struct MainTabViewWireframe: View {
             // 底部导航（中间训练按钮凸起）
             BottomNavWireframe(selectedTab: $selectedTab)
         }
+        .overlay(alignment: .bottomTrailing) {
+            if selectedTab != .train {
+                FloatingTabSwitcherBall(currentTab: $selectedTab)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 96)
+            }
+        }
     }
 }
 
 struct BottomNavWireframe: View {
-    @Binding var selectedTab: MainTabViewWireframe.TabItem
+    @Binding var selectedTab: AppTab
     
     var body: some View {
         VStack(spacing: 0) {
             // 主导航栏
             HStack(spacing: 0) {
-                ForEach([MainTabViewWireframe.TabItem.routines, .records, .coach, .settings], id: \.self) { tab in
+                ForEach([AppTab.routines, .records, .settings], id: \.self) { tab in
                     Button(action: {
                         selectedTab = tab
                     }) {
@@ -117,6 +104,88 @@ struct BottomNavWireframe: View {
         )
     }
 }
+
+private struct FloatingTabSwitcherBall: View {
+    @Binding var currentTab: AppTab
+    @State private var isMenuPresented = false
+    @State private var highlightedTab: AppTab?
+    
+    private let size: CGFloat = 52
+    
+    var body: some View {
+        GeometryReader { geo in
+            let center = CGPoint(
+                x: geo.size.width - size / 2,
+                y: geo.size.height - size / 2
+            )
+            
+            ZStack {
+                if isMenuPresented {
+                    FloatingRadialTabMenu(
+                        currentTab: currentTab,
+                        center: center,
+                        highlightedTab: $highlightedTab,
+                        onSelect: { tab in
+                            currentTab = tab
+                            isMenuPresented = false
+                            highlightedTab = nil
+                        },
+                        onCancel: {
+                            isMenuPresented = false
+                            highlightedTab = nil
+                        }
+                    )
+                }
+                
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: size, height: size)
+                    .overlay(
+                        Image(systemName: currentTab.icon)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+                    )
+                    .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
+                    .position(center)
+                    .gesture(tabSwitchGesture(center: center))
+            }
+        }
+        .frame(width: size + 180, height: size + 180)
+        .allowsHitTesting(true)
+    }
+    
+    private func tabSwitchGesture(center: CGPoint) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.35)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .onChanged { value in
+                switch value {
+                case .first(true):
+                    isMenuPresented = true
+                case .second(true, let drag?):
+                    highlightedTab = FloatingRadialTabMenu.closestTab(
+                        location: drag.location,
+                        center: center,
+                        currentTab: currentTab
+                    )
+                default:
+                    break
+                }
+            }
+            .onEnded { value in
+                if case .second(true, let drag?) = value,
+                   let selected = FloatingRadialTabMenu.closestTab(
+                    location: drag.location,
+                    center: center,
+                    currentTab: currentTab
+                   ) {
+                    currentTab = selected
+                }
+                isMenuPresented = false
+                highlightedTab = nil
+            }
+    }
+}
+
 
 #Preview {
     MainTabViewWireframe()

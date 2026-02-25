@@ -21,10 +21,17 @@ struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Session.startAt, order: .reverse) private var sessions: [Session]
     @Query(sort: \ExternalWorkout.startAt, order: .reverse) private var externalWorkouts: [ExternalWorkout]
+    @Query(sort: \Routine.name) private var routines: [Routine]
     @State private var selectedFilter: HistoryFilter = .all
     @StateObject private var importManager = HealthImportManager.shared
     @State private var isImporting = false
     @State private var showNRCGuide = false
+    @State private var searchText = ""
+    @State private var routineFilterId: UUID?
+    @State private var dateRange: DateRange = .week
+    @State private var calendarMonth = Date()
+    @State private var selectedDay: Date?
+    @State private var deleteCandidate: Session?
     
     let selectedRoutineId: UUID?
     
@@ -41,9 +48,13 @@ struct HistoryView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .padding()
+                .padding(.horizontal)
+                .padding(.top, 4)
                 
                 List {
+                    summarySection
+                    calendarSection
+                    
                     switch selectedFilter {
                     case .all:
                         strengthSection
@@ -54,11 +65,30 @@ struct HistoryView: View {
                         cardioSection
                     }
                 }
+                .listStyle(.plain)
+                .scrollIndicators(.hidden)
             }
             .navigationTitle("历史")
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
+            .animation(.easeInOut(duration: 0.25), value: selectedFilter)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
+                        Picker("时间范围", selection: $dateRange) {
+                            ForEach(DateRange.allCases, id: \.self) { range in
+                                Text(range.title).tag(range)
+                            }
+                        }
+                        
+                        Picker("计划", selection: $routineFilterId) {
+                            Text("全部计划").tag(UUID?.none)
+                            ForEach(routines) { routine in
+                                Text(routine.name).tag(Optional(routine.id))
+                            }
+                        }
+                        
+                        Divider()
+                        
                         Button(action: {
                             Task {
                                 await importRunningWorkouts()
@@ -81,6 +111,26 @@ struct HistoryView: View {
             .sheet(isPresented: $showNRCGuide) {
                 NRCSetupGuideView()
             }
+            .alert("删除记录", isPresented: Binding(
+                get: { deleteCandidate != nil },
+                set: { if !$0 { deleteCandidate = nil } }
+            )) {
+                Button("取消", role: .cancel) {}
+                Button("删除", role: .destructive) {
+                    if let session = deleteCandidate {
+                        modelContext.delete(session)
+                        try? modelContext.save()
+                        deleteCandidate = nil
+                    }
+                }
+            } message: {
+                Text("确认删除这条训练记录？此操作不可撤销。")
+            }
+            .onAppear {
+                if routineFilterId == nil {
+                    routineFilterId = selectedRoutineId
+                }
+            }
         }
     }
     
@@ -92,32 +142,41 @@ struct HistoryView: View {
     }
     
     private var strengthSection: some View {
-        Section("力量训练") {
+        Section("力量") {
             ForEach(filteredSessions) { session in
                 NavigationLink(destination: SessionDetailView(session: session)) {
                     SessionRowView(session: session)
+                }
+                .contextMenu {
+                    Button("复制摘要") {
+                        copySummary(for: session)
+                    }
+                    Button("删除记录", role: .destructive) {
+                        deleteCandidate = session
+                    }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        deleteCandidate = session
+                    } label: {
+                        Label("删除", systemImage: "trash")
+                    }
                 }
             }
         }
     }
     
     private var cardioSection: some View {
-        Section("Cardio (Health Import)") {
-            if externalWorkouts.isEmpty {
-                VStack(spacing: 12) {
-                    Text("暂无跑步记录")
-                        .foregroundColor(.secondary)
-                    Button("导入跑步记录") {
-                        Task {
-                            await importRunningWorkouts()
-                        }
+        Section("有氧") {
+            if filteredExternalWorkouts.isEmpty {
+                Button("导入跑步记录") {
+                    Task {
+                        await importRunningWorkouts()
                     }
-                    .buttonStyle(.bordered)
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
+                .disabled(isImporting)
             } else {
-                ForEach(externalWorkouts) { workout in
+                ForEach(filteredExternalWorkouts) { workout in
                     ExternalWorkoutRowView(workout: workout)
                 }
             }
@@ -125,68 +184,296 @@ struct HistoryView: View {
     }
     
     private var filteredSessions: [Session] {
-        if let routineId = selectedRoutineId {
-            return sessions.filter { $0.routine?.id == routineId }
+        let routineId = routineFilterId ?? selectedRoutineId
+        let dateFiltered = sessions.filter { session in
+            dateRange.contains(session.startAt)
         }
-        return sessions
+        let routineFiltered = routineId == nil
+            ? dateFiltered
+            : dateFiltered.filter { $0.routine?.id == routineId }
+        let dayFiltered = selectedDay.map { selected in
+            routineFiltered.filter { Calendar.current.isDate($0.startAt, inSameDayAs: selected) }
+        } ?? routineFiltered
+        if searchText.isEmpty {
+            return dayFiltered
+        }
+        return dayFiltered.filter { session in
+            session.routineNameSnapshot.localizedCaseInsensitiveContains(searchText)
+        }
     }
-}
+
+    private var summarySection: some View {
+        Section("概览") {
+            let summary = summaryForCurrentFilters()
+            LabeledContent("训练次数", value: "\(summary.strengthSessions) 次")
+            LabeledContent("训练时长", value: "\(summary.strengthMinutes) 分钟")
+            if summary.totalSets > 0 || summary.totalReps > 0 {
+                LabeledContent("总量", value: "组 \(summary.totalSets) · 次 \(summary.totalReps)")
+            }
+            if summary.cardioMinutes > 0 {
+                LabeledContent("有氧时长", value: "\(summary.cardioMinutes) 分钟")
+            }
+            if summary.totalDistance > 0 {
+                LabeledContent("有氧距离", value: "\(String(format: "%.2f", summary.totalDistance)) 公里")
+            }
+        }
+    }
+
+    private var calendarSection: some View {
+        Section("日历") {
+            MonthCalendarView(
+                month: $calendarMonth,
+                selectedDay: $selectedDay,
+                sessionDates: filteredSessions.map { $0.startAt },
+                workoutDates: filteredExternalWorkouts.map { $0.startAt }
+            )
+        }
+    }
+
+    private var filteredExternalWorkouts: [ExternalWorkout] {
+        externalWorkouts.filter { workout in
+            dateRange.contains(workout.startAt)
+        }
+    }
+
+    private func summaryForCurrentFilters() -> (strengthSessions: Int, strengthMinutes: Int, totalSets: Int, totalReps: Int, cardioMinutes: Int, totalDistance: Double) {
+        let strengthSessions = filteredSessions.count
+        let strengthMinutes = filteredSessions.compactMap { $0.duration }.reduce(0) { $0 + Int($1) / 60 }
+        let (totalSets, totalReps) = aggregateStats(for: filteredSessions)
+        let cardioMinutes = Int(filteredExternalWorkouts.reduce(0) { $0 + $1.duration }) / 60
+        let totalDistance = filteredExternalWorkouts.compactMap { $0.totalDistance }.reduce(0, +) / 1000.0
+        return (strengthSessions, strengthMinutes, totalSets, totalReps, cardioMinutes, totalDistance)
+    }
+
+    private func aggregateStats(for sessions: [Session]) -> (Int, Int) {
+        var sets = 0
+        var reps = 0
+        for session in sessions {
+            guard let exercises = session.exercises else { continue }
+            for exercise in exercises {
+                guard let entries = exercise.sets else { continue }
+                sets += entries.count
+                reps += entries.reduce(0) { $0 + $1.reps }
+            }
+        }
+        return (sets, reps)
+    }
+
+    private func copySummary(for session: Session) {
+        #if os(iOS)
+        let durationText = formatDuration(session.duration)
+        let summary = "\(session.routineNameSnapshot) · \(session.startAt.formatted(date: .abbreviated, time: .omitted)) · \(durationText)"
+        UIPasteboard.general.string = summary
+        #endif
+    }
+
+    private func formatDuration(_ duration: TimeInterval?) -> String {
+        guard let duration else { return "—" }
+        let minutes = Int(duration) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    }
+
 
 struct SessionRowView: View {
     let session: Session
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text(session.routine?.name ?? "未知训练计划")
+                Text(session.routineNameSnapshot)
                     .font(.headline)
                 Spacer()
-                // 状态图标
-                HStack(spacing: 8) {
-                    if session.healthWorkoutUUID != nil {
-                        Image(systemName: "heart.fill")
-                            .foregroundColor(.green)
-                            .font(.caption)
-                    } else {
-                        Image(systemName: "heart.slash")
-                            .foregroundColor(.gray)
-                            .font(.caption)
-                    }
-                    if session.calendarEventId != nil {
-                        Image(systemName: "calendar")
-                            .foregroundColor(.green)
-                            .font(.caption)
-                    } else {
-                        Image(systemName: "calendar.badge.minus")
-                            .foregroundColor(.gray)
-                            .font(.caption)
-                    }
+                if let duration = session.duration {
+                    Text(formatDuration(duration))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
-            
             Text(session.startAt, style: .date)
                 .font(.caption)
                 .foregroundColor(.secondary)
-            
-            if let duration = session.duration {
-                Text(formatDuration(duration))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            if let exercises = session.exercises, !exercises.isEmpty {
-                Text("\(exercises.count) 个动作")
-                    .font(.caption)
+            if let stats = statsLine {
+                Text(stats)
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private var statsLine: String? {
+        guard let exercises = session.exercises else { return nil }
+        var sets = 0
+        var reps = 0
+        for exercise in exercises {
+            guard let entries = exercise.sets else { continue }
+            sets += entries.count
+            reps += entries.reduce(0) { $0 + $1.reps }
+        }
+        if sets == 0 && reps == 0 {
+            return nil
+        }
+        return "组 \(sets) · 次 \(reps)"
+    }
+}
+
+private enum DateRange: String, CaseIterable {
+    case week
+    case month
+    case all
+    
+    var title: String {
+        switch self {
+        case .week:
+            return "近 7 天"
+        case .month:
+            return "近 30 天"
+        case .all:
+            return "全部"
+        }
+    }
+    
+    func contains(_ date: Date) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .week:
+            return date >= Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+        case .month:
+            return date >= Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        }
+    }
+}
+
+private struct MonthCalendarView: View {
+    @Binding var month: Date
+    @Binding var selectedDay: Date?
+    let sessionDates: [Date]
+    let workoutDates: [Date]
+    
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Button(action: { month = Calendar.current.date(byAdding: .month, value: -1, to: month) ?? month }) {
+                    Image(systemName: "chevron.left")
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                Text(monthTitle)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Button(action: { month = Calendar.current.date(byAdding: .month, value: 1, to: month) ?? month }) {
+                    Image(systemName: "chevron.right")
+                }
+                .buttonStyle(.plain)
+            }
+            
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(weekdaySymbols, id: \.self) { day in
+                    Text(day)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                
+                ForEach(daysInMonth, id: \.self) { date in
+                    if let date {
+                        Button(action: {
+                            if selectedDay != nil && Calendar.current.isDate(selectedDay!, inSameDayAs: date) {
+                                selectedDay = nil
+                            } else {
+                                selectedDay = date
+                            }
+                        }) {
+                            VStack(spacing: 4) {
+                                Text("\(Calendar.current.component(.day, from: date))")
+                                    .font(.caption)
+                                    .foregroundColor(isSelected(date) ? .white : .primary)
+                                    .frame(width: 24, height: 24)
+                                    .background(isSelected(date) ? Color.primary : Color.clear)
+                                    .clipShape(Circle())
+                                
+                                HStack(spacing: 3) {
+                                    if hasSession(on: date) {
+                                        Circle()
+                                            .fill(Color.primary)
+                                            .frame(width: 4, height: 4)
+                                    }
+                                    if hasWorkout(on: date) {
+                                        Circle()
+                                            .fill(Color.secondary)
+                                            .frame(width: 4, height: 4)
+                                    }
+                                }
+                                .frame(height: 6)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Color.clear.frame(height: 30)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private var monthTitle: String {
+        month.formatted(.dateTime.year().month())
+    }
+    
+    private var weekdaySymbols: [String] {
+        Calendar.current.shortWeekdaySymbols
+    }
+    
+    private var daysInMonth: [Date?] {
+        guard let monthInterval = Calendar.current.dateInterval(of: .month, for: month),
+              let firstWeekday = Calendar.current.dateComponents([.weekday], from: monthInterval.start).weekday else {
+            return []
+        }
+        
+        let startOffset = (firstWeekday + 6) % 7
+        let daysCount = Calendar.current.range(of: .day, in: .month, for: month)?.count ?? 0
+        var days: [Date?] = Array(repeating: nil, count: startOffset)
+        
+        for day in 0..<daysCount {
+            if let date = Calendar.current.date(byAdding: .day, value: day, to: monthInterval.start) {
+                days.append(date)
+            }
+        }
+        
+        let remainder = days.count % 7
+        if remainder != 0 {
+            days.append(contentsOf: Array(repeating: nil, count: 7 - remainder))
+        }
+        return days
+    }
+    
+    private func isSelected(_ date: Date) -> Bool {
+        guard let selectedDay else { return false }
+        return Calendar.current.isDate(selectedDay, inSameDayAs: date)
+    }
+    
+    private func hasSession(on date: Date) -> Bool {
+        sessionDates.contains { Calendar.current.isDate($0, inSameDayAs: date) }
+    }
+    
+    private func hasWorkout(on date: Date) -> Bool {
+        workoutDates.contains { Calendar.current.isDate($0, inSameDayAs: date) }
     }
 }
 
@@ -205,7 +492,7 @@ struct SessionDetailView: View {
                 HStack {
                     Text("训练计划")
                     Spacer()
-                    Text(session.routine?.name ?? "未知")
+                    Text(session.routineNameSnapshot)
                 }
                 HStack {
                     Text("开始时间")

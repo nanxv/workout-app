@@ -224,10 +224,8 @@ class CalendarManager: NSObject, ObservableObject {
     
     /// 生成事件标题
     private func generateEventTitle(for session: Session) -> String {
-        if let routineName = session.routine?.name {
-            return "训练 - \(routineName)"
-        }
-        return "训练"
+        let routineName = session.routineNameSnapshot
+        return routineName.isEmpty ? "训练" : "训练 - \(routineName)"
     }
     
     /// 生成事件备注

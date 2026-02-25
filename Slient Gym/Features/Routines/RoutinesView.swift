@@ -14,36 +14,24 @@ struct RoutinesView: View {
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var showingAddRoutine = false
     @State private var selectedRoutine: Routine?
-    @State private var expandedRoutineIds: Set<UUID> = []
     @State private var cachedLatestSessions: [UUID: Session] = [:]
     
     var body: some View {
         NavigationStack {
             List {
                 ForEach(routines) { routine in
-                    RoutineCardView(
-                        routine: routine,
-                        isExpanded: expandedRoutineIds.contains(routine.id),
-                        latestSession: cachedLatestSessions[routine.id],
-                        onToggle: {
-                            withAnimation {
-                                if expandedRoutineIds.contains(routine.id) {
-                                    expandedRoutineIds.remove(routine.id)
-                                } else {
-                                    expandedRoutineIds.insert(routine.id)
-                                    // 展开时加载最新 Session
-                                    loadLatestSession(for: routine.id)
-                                }
-                            }
-                        },
-                        onNavigate: {
-                            selectedRoutine = routine
-                        }
-                    )
+                    NavigationLink(destination: RoutineDetailView(routine: routine)) {
+                        RoutineRow(routine: routine, latestSession: cachedLatestSessions[routine.id])
+                    }
+                    .onAppear {
+                        loadLatestSession(for: routine.id)
+                    }
                 }
                 .onDelete(perform: deleteRoutines)
             }
-            .navigationTitle("Routines")
+            .listStyle(.plain)
+            .scrollIndicators(.hidden)
+            .navigationTitle("计划")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
@@ -55,9 +43,6 @@ struct RoutinesView: View {
             }
             .sheet(isPresented: $showingAddRoutine) {
                 AddRoutineView()
-            }
-            .navigationDestination(item: $selectedRoutine) { routine in
-                RoutineDetailView(routine: routine)
             }
         }
     }
@@ -74,6 +59,17 @@ struct RoutinesView: View {
                 modelContext.delete(routines[index])
             }
         }
+    }
+}
+
+private struct RoutineRow: View {
+    let routine: Routine
+    let latestSession: Session?
+    
+    var body: some View {
+        Text(routine.name)
+            .font(.headline)
+            .padding(.vertical, 6)
     }
 }
 

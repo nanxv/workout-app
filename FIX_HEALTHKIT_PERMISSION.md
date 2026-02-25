@@ -47,3 +47,5 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 - 如果应用被拒绝，可能需要更详细的描述
 
 
+
+

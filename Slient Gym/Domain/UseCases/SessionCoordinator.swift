@@ -116,6 +116,7 @@ class SessionCoordinator: ObservableObject {
         }
         
         let session = Session(routine: routine, startAt: Date())
+        session.routineNameSnapshot = routine.name
         modelContext.insert(session)
         
         // Create SessionExercise entries for each RoutineExercise

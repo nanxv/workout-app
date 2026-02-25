@@ -18,6 +18,8 @@ struct FloatingWorkoutBall: View {
     
     @State private var isDragging = false
     @State private var dragStartPosition: CGPoint = .zero
+    @State private var isPulsing = false
+    @State private var isTemporarilyHidden = false
     
     private let ballSize: CGFloat = 56
     private let ballRadius: CGFloat = 28
@@ -25,31 +27,95 @@ struct FloatingWorkoutBall: View {
     
     var body: some View {
         GeometryReader { geometry in
-            if state.isVisible {
+            if state.isVisible && !isTemporarilyHidden {
                 ZStack {
                     // 悬浮球主体
-                    Circle()
-                        .fill(.ultraThinMaterial)
+                    ballBody
                         .frame(width: ballSize, height: ballSize)
                         .overlay(progressOverlay)
                         .contentShape(Circle())
                         .padding(8) // 扩大命中区域
-                        .shadow(color: .black.opacity(0.2), radius: 8, y: 2)
-                        .scaleEffect(isDragging ? 1.15 : 1.0)
+                        .shadow(color: .black.opacity(state.isResting ? 0.3 : 0.2), radius: 10, y: 2)
+                        .scaleEffect(isDragging ? 1.12 : 1.0)
                         .position(currentPosition(in: geometry.frame(in: .local)))
                         .gesture(dragGesture(in: geometry.frame(in: .local)))
                         .onTapGesture(count: 2, perform: onDoubleTap)
                         .onTapGesture(perform: onSingleTap)
-                        .onLongPressGesture(minimumDuration: 0.8, perform: onLongPress)
+                        .onLongPressGesture(minimumDuration: 0.7, perform: onLongPress)
                         .accessibilityLabel(state.isResting ? "休息中" : "训练控制")
-                        .accessibilityHint("点按展开控制面板，双击暂停/继续休息")
+                        .accessibilityHint("点按展开控制面板，双击暂停或开始休息")
                         .onAppear {
                             state.restorePosition(in: geometry.frame(in: .local))
+                            if state.isResting {
+                                startPulse()
+                            }
                         }
+                        .onChange(of: state.isResting) { _, newValue in
+                            if newValue {
+                                startPulse()
+                            }
+                        }
+                        .contextMenu {
+                            if state.isResting {
+                                Button(state.isPaused ? "继续休息" : "暂停休息") {
+                                    onDoubleTap()
+                                }
+                            } else {
+                                Button("开始休息") {
+                                    onDoubleTap()
+                                }
+                            }
+                            Button("展开控制面板") {
+                                onSingleTap()
+                            }
+                            Button("隐藏 10 秒") {
+                                hideTemporarily()
+                            }
+                        }
+                        .transition(.scale.combined(with: .opacity))
+                        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: state.isVisible)
                 }
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
+    }
+    
+    /// 悬浮球主体样式
+    private var ballBody: some View {
+        ZStack {
+            if state.isResting {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.2))
+                    .scaleEffect(isPulsing ? 1.25 : 0.9)
+                    .opacity(isPulsing ? 0.1 : 0.35)
+                    .animation(.easeOut(duration: 1.4).repeatForever(autoreverses: false), value: isPulsing)
+            }
+            
+            Circle()
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.45),
+                                    Color.white.opacity(0.15),
+                                    Color.black.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.2
+                        )
+                )
+            
+            if state.isPaused {
+                Image(systemName: "pause.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary.opacity(0.8))
+                    .offset(y: 12)
+            }
+        }
     }
     
     /// 环形进度条覆盖层
@@ -66,7 +132,10 @@ struct FloatingWorkoutBall: View {
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(
-                        .primary,
+                        AngularGradient(
+                            colors: [.primary, .primary.opacity(0.6), .primary],
+                            center: .center
+                        ),
                         style: StrokeStyle(lineWidth: progressLineWidth, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
@@ -77,10 +146,18 @@ struct FloatingWorkoutBall: View {
             }
             
             // 中心文字：显示倒计时或"训"
-            Text(state.isResting ? "\(Int(state.restRemaining))" : "训")
-                .font(.system(size: 12, weight: .medium))
+            Text(centerText)
+                .font(.system(size: 12, weight: .semibold))
+                .monospacedDigit()
                 .foregroundColor(.primary)
         }
+    }
+    
+    private var centerText: String {
+        if state.isResting {
+            return "\(Int(state.restRemaining))"
+        }
+        return "训"
     }
     
     /// 获取当前位置
@@ -151,6 +228,21 @@ struct FloatingWorkoutBall: View {
                 let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                 impactFeedback.impactOccurred()
             }
+    }
+    
+    private func startPulse() {
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
+        isPulsing = false
+        DispatchQueue.main.async {
+            isPulsing = true
+        }
+    }
+
+    private func hideTemporarily() {
+        isTemporarilyHidden = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+            isTemporarilyHidden = false
+        }
     }
 }
 

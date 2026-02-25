@@ -24,126 +24,202 @@ struct TrainViewWireframe: View {
     @State private var capsuleHidden = false
     @State private var openDayIds: Set<UUID> = []
     @State private var showEndSessionConfirmation = false
-    
-    init() {
+    @State private var quickReps: String = ""
+    @State private var quickRIR: Int = 1
+    @Binding var currentTab: AppTab
+    @State private var showTabSwitcher = false
+    @State private var highlightedTab: AppTab?
+
+    init(currentTab: Binding<AppTab>) {
         let tempContainer = PersistenceController.shared.container
         let tempContext = ModelContext(tempContainer)
         _sessionCoordinator = StateObject(wrappedValue: SessionCoordinator(modelContext: tempContext))
+        _currentTab = currentTab
     }
-    
+
+    private var isIdle: Bool {
+        if case .idle = sessionCoordinator.state { return true }
+        return false
+    }
+
+    @ViewBuilder
+    private var headerView: some View {
+        HStack {
+            Text("今天")
+                .font(.title2)
+                .fontWeight(.semibold)
+            Spacer()
+            Button(action: { capsuleHidden.toggle() }) {
+                Text(capsuleHidden ? "显示状态" : "隐藏状态")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .underline()
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 16)
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private var routinesList: some View {
+        VStack(spacing: 12) {
+            ForEach(Array(routines.prefix(3))) { routine in
+                RoutineDayCard(
+                    routine: routine,
+                    isOpen: openDayIds.contains(routine.id),
+                    sessionCoordinator: sessionCoordinator,
+                    modelContext: modelContext,
+                    onToggle: {
+                        withAnimation {
+                            if openDayIds.contains(routine.id) {
+                                openDayIds.remove(routine.id)
+                            } else {
+                                openDayIds.insert(routine.id)
+                            }
+                        }
+                    },
+                    onStart: {
+                        startTraining(routine: routine)
+                    }
+                )
+            }
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 100)
+    }
+
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            #if os(iOS)
+            if isIdle, !capsuleHidden {
+                StatusCapsuleView()
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+            }
+            #endif
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    headerView
+                    routinesList
+                }
+            }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+        }
+    }
+
+    @ViewBuilder
+    private var floatingBallOverlay: some View {
+        FloatingWorkoutBall(
+            state: ballState,
+            onSingleTap: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    ballState.showPanel.toggle()
+                }
+            },
+            onDoubleTap: {
+                if ballState.isResting {
+                    if case .running = restTimer.state {
+                        restTimer.pause()
+                        ballState.updatePauseState(isPaused: true)
+                    } else if case .paused = restTimer.state {
+                        restTimer.resume()
+                        ballState.updatePauseState(isPaused: false)
+                    }
+                } else {
+                    if let restSec = getCurrentRestSeconds() {
+                        restTimer.start(seconds: restSec)
+                        sessionCoordinator.startRest(seconds: restSec)
+                    }
+                }
+            },
+            onLongPress: {
+                showTabSwitcher = true
+            },
+            onDragEnd: { point, frame in
+                snapToEdges(point: point, in: frame)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var tabSwitcherOverlay: some View {
+        if showTabSwitcher {
+            GeometryReader { geo in
+                let center = ballState.position ?? CGPoint(x: geo.size.width - 40, y: geo.size.height - 140)
+                FloatingRadialTabMenu(
+                    currentTab: currentTab,
+                    center: center,
+                    highlightedTab: $highlightedTab,
+                    onSelect: { tab in
+                        currentTab = tab
+                        showTabSwitcher = false
+                        highlightedTab = nil
+                    },
+                    onCancel: {
+                        showTabSwitcher = false
+                        highlightedTab = nil
+                    }
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var ballPanelSheet: some View {
+        FloatingBallPanel(
+            state: ballState,
+            quickReps: $quickReps,
+            quickRIR: $quickRIR,
+            onPlus15: {
+                restTimer.extend(by: 15)
+                sessionCoordinator.extendRest(by: 15)
+            },
+            onTogglePause: {
+                if case .running = restTimer.state {
+                    restTimer.pause()
+                    ballState.updatePauseState(isPaused: true)
+                } else if case .paused = restTimer.state {
+                    restTimer.resume()
+                    ballState.updatePauseState(isPaused: false)
+                }
+            },
+            onSkip: {
+                restTimer.skip()
+                sessionCoordinator.restFinished()
+            },
+            onStartRest: {
+                if let restSec = getCurrentRestSeconds() {
+                    restTimer.start(seconds: restSec)
+                    sessionCoordinator.startRest(seconds: restSec)
+                }
+            },
+            onCompleteSet: {
+                if let reps = Int(quickReps) {
+                    sessionCoordinator.completeSet(reps: reps, rir: quickRIR)
+                    quickReps = ""
+                    quickRIR = 1
+                }
+            },
+            onEnd: {
+                sessionCoordinator.endSession()
+                ballState.showPanel = false
+            }
+        )
+        .presentationDetents([.height(280)])
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                VStack(spacing: 0) {
-                    #if os(iOS)
-                    if case .idle = sessionCoordinator.state, !capsuleHidden {
-                        StatusCapsuleView()
-                            .padding(.horizontal)
-                            .padding(.top, 8)
-                    }
-                    #endif
-                    
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            // 标题栏
-                            HStack {
-                                Text("今天")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                
-                                Spacer()
-                                
-                                Button(action: {
-                                    capsuleHidden.toggle()
-                                }) {
-                                    Text(capsuleHidden ? "显示状态" : "隐藏状态")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                        .underline()
-                                }
-                            }
-                            .padding(.horizontal)
-                            .padding(.top, 16)
-                            .padding(.bottom, 8)
-                            
-                            // 训练计划列表
-                            VStack(spacing: 12) {
-                                ForEach(Array(routines.prefix(3))) { routine in
-                                    RoutineDayCard(
-                                        routine: routine,
-                                        isOpen: openDayIds.contains(routine.id),
-                                        sessionCoordinator: sessionCoordinator,
-                                        modelContext: modelContext,
-                                        onToggle: {
-                                            withAnimation {
-                                                if openDayIds.contains(routine.id) {
-                                                    openDayIds.remove(routine.id)
-                                                } else {
-                                                    openDayIds.insert(routine.id)
-                                                }
-                                            }
-                                        },
-                                        onStart: {
-                                            startTraining(routine: routine)
-                                        }
-                                    )
-                                }
-                            }
-                            .padding(.horizontal)
-                            .padding(.bottom, 100) // 为悬浮球留空间
-                        }
-                    }
-                }
-                
-                // 悬浮球（仅在训练中显示）
-                FloatingWorkoutBall(
-                    state: ballState,
-                    onSingleTap: {
-                        ballState.showPanel.toggle()
-                    },
-                    onDoubleTap: {
-                        // 双击：暂停/继续休息
-                        if ballState.isResting {
-                            if case .running = restTimer.state {
-                                restTimer.pause()
-                            } else if case .paused = restTimer.state {
-                                restTimer.resume()
-                            }
-                        } else {
-                            // 如果不在休息中，开始休息
-                            if let restSec = getCurrentRestSeconds() {
-                                restTimer.start(seconds: restSec)
-                                sessionCoordinator.startRest(seconds: restSec)
-                            }
-                        }
-                    },
-                    onLongPress: {
-                        // 长按：结束训练确认
-                        showEndSessionConfirmation = true
-                    },
-                    onDragEnd: { point, frame in
-                        snapToEdges(point: point, in: frame)
-                    }
-                )
+                mainContent
+                floatingBallOverlay
             }
-            .sheet(isPresented: $ballState.showPanel) {
-                FloatingBallPanel(
-                    state: ballState,
-                    onPlus15: {
-                        restTimer.extend(by: 15)
-                        sessionCoordinator.extendRest(by: 15)
-                    },
-                    onSkip: {
-                        restTimer.skip()
-                        sessionCoordinator.restFinished()
-                    },
-                    onEnd: {
-                        sessionCoordinator.endSession()
-                        ballState.showPanel = false
-                    }
-                )
-                .presentationDetents([.height(200)])
-            }
+            .overlay { tabSwitcherOverlay }
+            .sheet(isPresented: $ballState.showPanel) { ballPanelSheet }
             .alert("结束训练", isPresented: $showEndSessionConfirmation) {
                 Button("取消", role: .cancel) {}
                 Button("确认", role: .destructive) {
@@ -157,7 +233,6 @@ struct TrainViewWireframe: View {
         }
         .onAppear {
             sessionCoordinator.modelContext = modelContext
-            // 移除自动弹出日历的逻辑，用户可以在需要时手动添加
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("StartRestTimer"))) { notification in
             if let restSeconds = notification.userInfo?["restSeconds"] as? Int {
@@ -167,26 +242,29 @@ struct TrainViewWireframe: View {
         }
         .onChange(of: sessionCoordinator.state) { oldValue, newValue in
             handleStateChange(newValue)
+            updateBallExerciseInfo()
         }
-        // 监听训练状态，控制悬浮球显示
         .onChange(of: sessionCoordinator.currentSession) { oldValue, newValue in
             ballState.isVisible = newValue != nil
             if newValue == nil {
                 ballState.showPanel = false
+                ballState.updateSubtitle(nil)
+                ballState.updateExerciseInfo(name: nil, setIndex: 0, totalSets: 0, nextName: nil)
+            } else {
+                ballState.updateSubtitle(getCurrentExerciseSubtitle())
+                updateBallExerciseInfo()
             }
         }
-        // 监听休息计时器状态
         .onChange(of: restTimer.state) { oldValue, newValue in
             switch newValue {
             case .running(let remaining):
-                // 获取总休息时长（从当前动作的默认休息时间）
                 let totalRest = getCurrentRestSeconds() ?? 90
                 ballState.updateRestState(
                     isActive: true,
                     remaining: TimeInterval(remaining),
                     total: TimeInterval(totalRest)
                 )
-                // 休息结束时震动反馈
+                ballState.updatePauseState(isPaused: false)
                 if remaining == 0 {
                     #if os(iOS)
                     let notificationFeedback = UINotificationFeedbackGenerator()
@@ -194,19 +272,19 @@ struct TrainViewWireframe: View {
                     #endif
                 }
             case .paused(let remaining):
-                // 保持总时长不变
                 ballState.updateRestState(
                     isActive: true,
                     remaining: TimeInterval(remaining),
                     total: ballState.restTotal > 0 ? ballState.restTotal : TimeInterval(remaining)
                 )
+                ballState.updatePauseState(isPaused: true)
             case .off:
                 ballState.updateRestState(isActive: false, remaining: 0, total: 0)
+                ballState.updatePauseState(isPaused: false)
             }
         }
-        // 移除自动弹出日历的 sheet，用户可以通过其他方式手动添加
     }
-    
+
     private func startTraining(routine: Routine) {
         guard let session = sessionCoordinator.startSession(routineId: routine.id) else {
             return
@@ -214,7 +292,6 @@ struct TrainViewWireframe: View {
         
         openDayIds.insert(routine.id)
         
-        // 后台尝试启动 watch
         #if os(iOS)
         Task.detached(priority: .userInitiated) {
             await MainActor.run {
@@ -261,6 +338,7 @@ struct TrainViewWireframe: View {
         switch newState {
         case .resting(_, let remaining):
             showRestTimer = true
+            ballState.updateSubtitle(getCurrentExerciseSubtitle())
             if case .off = restTimer.state {
                 restTimer.start(seconds: remaining)
             } else {
@@ -271,18 +349,73 @@ struct TrainViewWireframe: View {
                 sessionCoordinator.restFinished()
                 showRestTimer = false
             }
-            // 更新悬浮球休息状态
             ballState.updateRestState(
                 isActive: true,
                 remaining: TimeInterval(remaining),
                 total: TimeInterval(remaining)
             )
+            ballState.updatePauseState(isPaused: false)
+        case .running:
+            ballState.updateSubtitle(getCurrentExerciseSubtitle())
+            ballState.updatePauseState(isPaused: false)
+            updateBallExerciseInfo()
+        case .paused:
+            ballState.updateSubtitle(getCurrentExerciseSubtitle())
+            updateBallExerciseInfo()
         case .finished:
             ballState.isVisible = false
             ballState.showPanel = false
+            ballState.updateSubtitle(nil)
+            ballState.updatePauseState(isPaused: false)
+            ballState.updateExerciseInfo(name: nil, setIndex: 0, totalSets: 0, nextName: nil)
         default:
             break
         }
+    }
+
+    private func updateBallExerciseInfo() {
+        guard let session = sessionCoordinator.currentSession,
+              let exercises = session.exercises?.sorted(by: { $0.order < $1.order }),
+              !exercises.isEmpty else {
+            ballState.updateExerciseInfo(name: nil, setIndex: 0, totalSets: 0, nextName: nil)
+            return
+        }
+        
+        let currentIndex = min(sessionCoordinator.currentExerciseIndex, exercises.count - 1)
+        let currentExercise = exercises[safe: currentIndex]
+        let routineExercise = currentExercise.map { getRoutineExercise(for: $0) } ?? nil
+        let totalSets = max(1, routineExercise?.targetSets ?? 1)
+        
+        let completedSets: Int
+        switch sessionCoordinator.state {
+        case .resting:
+            completedSets = min(sessionCoordinator.currentSetIndex + 1, totalSets)
+        default:
+            completedSets = min(sessionCoordinator.currentSetIndex, totalSets)
+        }
+        
+        let nextName: String?
+        if currentIndex + 1 < exercises.count {
+            nextName = exercises[currentIndex + 1].exercise?.name
+        } else {
+            nextName = nil
+        }
+        
+        ballState.updateExerciseInfo(
+            name: currentExercise?.exercise?.name,
+            setIndex: completedSets,
+            totalSets: totalSets,
+            nextName: nextName
+        )
+    }
+    
+    private func getRoutineExercise(for sessionExercise: SessionExercise) -> RoutineExercise? {
+        guard let session = sessionExercise.session,
+              let routine = session.routine,
+              let exercise = sessionExercise.exercise else {
+            return nil
+        }
+        return routine.exercises?.first { $0.exercise?.id == exercise.id }
     }
 }
 
@@ -317,18 +450,16 @@ struct RoutineDayCard: View {
                     
                     Spacer()
                     
-                    Text(isOpen ? "（点击收起）" : "（点击展开）")
+                    Image(systemName: "chevron.down")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(isOpen ? 180 : 0))
                     
-                    // 根据训练状态显示"开始"或"结束"按钮
                     let isActive = sessionCoordinator.currentSession?.routine?.id == routine.id
                     Button(action: {
                         if isActive {
-                            // 结束训练
                             sessionCoordinator.endSession()
                         } else {
-                            // 开始训练
                             onStart()
                         }
                     }) {
@@ -347,7 +478,6 @@ struct RoutineDayCard: View {
             }
             .buttonStyle(.plain)
             
-            // 展开内容
             if isOpen {
                 VStack(spacing: 0) {
                     if let exercises = routine.exercises?.sorted(by: { $0.order < $1.order }) {
@@ -362,7 +492,6 @@ struct RoutineDayCard: View {
                                 .padding(.horizontal)
                                 .padding(.vertical, 8)
                             } else {
-                                // 未开始训练时显示计划
                                 ExercisePlanPreview(routineExercise: routineExercise)
                                     .padding(.horizontal)
                                     .padding(.vertical, 8)
@@ -376,6 +505,7 @@ struct RoutineDayCard: View {
         .background(Color(.systemBackground))
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isOpen)
     }
     
     private func estimateMinutes(for routine: Routine) -> Int {
@@ -385,7 +515,7 @@ struct RoutineDayCard: View {
             if re.isHoldType, let holdSec = re.holdSecDefault {
                 exerciseTime = re.targetSets * (holdSec + re.restSecondsDefault)
             } else {
-                let repTime = 6 // 假设每次 rep 6 秒
+                let repTime = 6
                 exerciseTime = re.targetSets * (re.restSecondsDefault + (re.repTarget ?? 10) * repTime)
             }
             return acc + exerciseTime

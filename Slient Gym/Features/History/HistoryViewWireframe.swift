@@ -304,7 +304,7 @@ struct HistoryItemView: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(session.routine?.name ?? "未知训练计划")
+                Text(session.routineNameSnapshot)
                     .font(.headline)
                 Text(session.startAt, style: .date)
                     .font(.caption)

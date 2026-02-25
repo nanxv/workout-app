@@ -25,32 +25,14 @@ struct RoutineCardView: View {
                         Text(routine.name)
                             .font(.headline)
                         
-                        HStack(spacing: 12) {
-                            if let exercises = routine.exercises, !exercises.isEmpty {
-                                Text("\(exercises.count) 个动作")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            if let weeklyCount = weeklyCompletionCount, weeklyCount > 0 {
-                                Text("本周 \(weeklyCount) 次")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            if let duration = latestSessionDuration {
-                                Text(formatDuration(duration))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                        if let exercises = routine.exercises, !exercises.isEmpty {
+                            Text("\(exercises.count) 个动作")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                     
                     Spacer()
-                    
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
                 .contentShape(Rectangle())
             }
@@ -58,7 +40,7 @@ struct RoutineCardView: View {
             
             // 展开内容
             if isExpanded {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 12) {
                     if let routineExercises = routine.exercises?.sorted(by: { $0.order < $1.order }),
                        !routineExercises.isEmpty {
                         ForEach(routineExercises) { routineExercise in
@@ -73,20 +55,6 @@ struct RoutineCardView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.vertical, 8)
-                    }
-                    
-                    Divider()
-                    
-                    // 查看全部记录链接
-                    NavigationLink(destination: HistoryView(selectedRoutineId: routine.id)) {
-                        HStack {
-                            Text("查看全部记录")
-                                .font(.caption)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption2)
-                        }
-                        .foregroundColor(.blue)
                     }
                 }
                 .padding(.top, 8)
@@ -127,68 +95,21 @@ struct ExercisePlanRow: View {
                 .font(.subheadline)
                 .fontWeight(.semibold)
             
-            HStack(alignment: .top, spacing: 16) {
-                // 计划栏
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("计划")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text("\(routineExercise.targetSets)组")
-                        .font(.caption)
-                    if let repTarget = routineExercise.repTarget, repTarget > 0 {
-                        Text("每组 \(repTarget) 次")
-                            .font(.caption)
-                    }
-                    Text("休息 \(routineExercise.restSecondsDefault)秒")
-                        .font(.caption)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
-                Divider()
-                    .frame(height: 40)
-                
-                // 最近一次结果栏
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("最近一次")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    
-                    if let session = latestSession,
-                       let exerciseId = routineExercise.exercise?.id {
-                        let setEntries = RoutineHistoryHelper.latestSetEntries(
-                            sessionId: session.id,
-                            exerciseId: exerciseId,
-                            context: context
-                        )
-                        
-                        if !setEntries.isEmpty {
-                            // 显示逐组结果
-                            VStack(alignment: .leading, spacing: 2) {
-                                ForEach(setEntries.prefix(5), id: \.id) { entry in
-                                    Text("#\(entry.setIndex + 1): \(entry.reps)次/RIR\(entry.rir)")
-                                        .font(.caption)
-                                }
-                                if setEntries.count > 5 {
-                                    Text("...")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        } else {
-                            Text("— 未有记录 —")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    } else {
-                        Text("— 未有记录 —")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            Text(planSummary)
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
+    }
+
+    private var planSummary: String {
+        if routineExercise.isHoldType, let holdSec = routineExercise.holdSecDefault {
+            return "\(routineExercise.targetSets)组 × \(holdSec)秒 · 休息 \(routineExercise.restSecondsDefault)秒"
+        }
+        if let repTarget = routineExercise.repTarget, repTarget > 0 {
+            return "\(routineExercise.targetSets)组 × \(repTarget)次 · 休息 \(routineExercise.restSecondsDefault)秒"
+        }
+        return "\(routineExercise.targetSets)组 · 休息 \(routineExercise.restSecondsDefault)秒"
     }
 }
 

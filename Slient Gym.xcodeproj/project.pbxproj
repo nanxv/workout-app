@@ -6,7 +6,23 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		260DB0A17C9B4C6DB930DBE0 /* Slient_GymTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3695D9ABB38D47FBBF990BCD /* Slient_GymTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BE4C39250F244BB9BD05FA4F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AAFC53912F07C34500EFF37F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AAFC53982F07C34500EFF37F;
+			remoteInfo = "Slient Gym";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		3695D9ABB38D47FBBF990BCD /* Slient_GymTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Slient_GymTests.swift; sourceTree = "<group>"; };
+		8A410B88E1F64288B756707E /* Slient GymTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Slient GymTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AAFC53992F07C34500EFF37F /* Slient Gym.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Slient Gym.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -19,6 +35,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		531FD46C22E54EE9B1F71ACD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AAFC53962F07C34500EFF37F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				AAFC539B2F07C34500EFF37F /* Slient Gym */,
+				F2D0DD52236C47C0AB7FF541 /* Slient GymTests */,
 				AAFC539A2F07C34500EFF37F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,13 +65,40 @@
 			isa = PBXGroup;
 			children = (
 				AAFC53992F07C34500EFF37F /* Slient Gym.app */,
+				8A410B88E1F64288B756707E /* Slient GymTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		F2D0DD52236C47C0AB7FF541 /* Slient GymTests */ = {
+			isa = PBXGroup;
+			children = (
+				3695D9ABB38D47FBBF990BCD /* Slient_GymTests.swift */,
+			);
+			path = "Slient GymTests";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		20203C8DD17D4175A5C86E4D /* Slient GymTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 102D596C2A444558BC39976B /* Build configuration list for PBXNativeTarget "Slient GymTests" */;
+			buildPhases = (
+				A86757848D07463B93A89DB5 /* Sources */,
+				531FD46C22E54EE9B1F71ACD /* Frameworks */,
+				68A54E1F18AA46069876AB8F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EFF565EFD3414A80A16FC8AE /* PBXTargetDependency */,
+			);
+			name = "Slient GymTests";
+			productName = "Slient GymTests";
+			productReference = 8A410B88E1F64288B756707E /* Slient GymTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		AAFC53982F07C34500EFF37F /* Slient Gym */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = AAFC53A62F07C34600EFF37F /* Build configuration list for PBXNativeTarget "Slient Gym" */;
@@ -80,6 +131,9 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					20203C8DD17D4175A5C86E4D = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					AAFC53982F07C34500EFF37F = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -100,11 +154,19 @@
 			projectRoot = "";
 			targets = (
 				AAFC53982F07C34500EFF37F /* Slient Gym */,
+				20203C8DD17D4175A5C86E4D /* Slient GymTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		68A54E1F18AA46069876AB8F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AAFC53972F07C34500EFF37F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,6 +177,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A86757848D07463B93A89DB5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				260DB0A17C9B4C6DB930DBE0 /* Slient_GymTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AAFC53952F07C34500EFF37F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -124,7 +194,36 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		EFF565EFD3414A80A16FC8AE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AAFC53982F07C34500EFF37F /* Slient Gym */;
+			targetProxy = BE4C39250F244BB9BD05FA4F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		4DBDCEC301D2417A89454E2E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WMPS7GSXH4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "ZC.POB.Slient-GymTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Slient Gym.app/Slient Gym";
+			};
+			name = Release;
+		};
 		AAFC53A42F07C34600EFF37F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -314,9 +413,40 @@
 			};
 			name = Release;
 		};
+		AF72DADE0856427483FAD0F7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WMPS7GSXH4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "ZC.POB.Slient-GymTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Slient Gym.app/Slient Gym";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		102D596C2A444558BC39976B /* Build configuration list for PBXNativeTarget "Slient GymTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF72DADE0856427483FAD0F7 /* Debug */,
+				4DBDCEC301D2417A89454E2E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		AAFC53942F07C34500EFF37F /* Build configuration list for PBXProject "Slient Gym" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
