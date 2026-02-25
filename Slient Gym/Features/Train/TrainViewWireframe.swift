@@ -436,7 +436,7 @@ struct RoutineDayCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(routine.name)
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(AppTheme.textPrimary)
                         
                         if let exercises = routine.exercises, !exercises.isEmpty {
                             let firstExercise = exercises.sorted(by: { $0.order < $1.order }).first
@@ -444,7 +444,7 @@ struct RoutineDayCard: View {
                             let estimatedMinutes = estimateMinutes(for: routine)
                             Text("\(exerciseName) 等 · 约 \(estimatedMinutes) 分钟")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.textSecondary)
                         }
                     }
                     
@@ -464,11 +464,11 @@ struct RoutineDayCard: View {
                         }
                     }) {
                         Text(isActive ? "结束" : "开始")
-                            .font(.subheadline)
-                            .foregroundColor(.white)
+                            .font(.subheadline.bold())
+                            .foregroundColor(isActive ? .white : AppTheme.accentForeground)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(isActive ? Color.red : Color.black)
+                            .background(isActive ? AppTheme.destructive : AppTheme.accent)
                             .cornerRadius(12)
                     }
                     .buttonStyle(.plain)
@@ -502,9 +502,8 @@ struct RoutineDayCard: View {
                 .padding(.bottom)
             }
         }
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .background(AppTheme.surface)
+        .cornerRadius(AppTheme.cardRadius)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isOpen)
     }
     
@@ -529,25 +528,38 @@ struct ExercisePlanPreview: View {
     let routineExercise: RoutineExercise
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(routineExercise.exercise?.name ?? "未知动作")
-                .font(.headline)
-            
-            let planText: String = {
-                if routineExercise.isHoldType, let holdSec = routineExercise.holdSecDefault {
-                    return "\(routineExercise.targetSets)组 × \(holdSec)秒"
-                } else if let repTarget = routineExercise.repTarget {
-                    return "\(routineExercise.targetSets)组 × \(repTarget)次"
-                } else {
-                    return "\(routineExercise.targetSets)组"
-                }
-            }()
-            
-            Text("计划：\(planText) · 休息：\(routineExercise.restSecondsDefault)秒")
-                .font(.caption)
-                .foregroundColor(.secondary)
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(routineExercise.exercise?.name ?? "未知动作")
+                    .font(.subheadline.bold())
+                    .foregroundColor(AppTheme.textPrimary)
+
+                let planText: String = {
+                    if routineExercise.isHoldType, let holdSec = routineExercise.holdSecDefault {
+                        return "\(routineExercise.targetSets)组 × \(holdSec)s"
+                    } else if let repTarget = routineExercise.repTarget {
+                        return "\(routineExercise.targetSets)组 × \(repTarget)次"
+                    } else {
+                        return "\(routineExercise.targetSets)组"
+                    }
+                }()
+                Text("计划 \(planText) · 休息 \(routineExercise.restSecondsDefault)s")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.textSecondary)
+            }
+            Spacer()
+            Image(systemName: "lock.fill")
+                .font(.caption2)
+                .foregroundColor(AppTheme.textTertiary)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(AppTheme.background)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(AppTheme.border.opacity(0.4), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 

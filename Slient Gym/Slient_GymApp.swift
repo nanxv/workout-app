@@ -35,6 +35,7 @@ struct Slient_GymApp: App {
         WindowGroup {
             // 使用新的 Wireframe 版本（基于设计稿）
             MainTabViewWireframe()
+                .preferredColorScheme(.dark)
                 .task {
                     // Generate sample data on first launch (async, non-blocking)
                     Task.detached(priority: .userInitiated) {

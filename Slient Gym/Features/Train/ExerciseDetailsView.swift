@@ -1,404 +1,569 @@
 //
 //  ExerciseDetailsView.swift
-//  Slient Gym
+//  Silent Gym
 //
-//  Created by CHY5TK on 2026/01/02.
-//  Based on Wireframe v1.8.3
+//  v2 — Zero-friction redesign
+//  • Smart auto-fill from previous session (highest priority)
+//  • Large stepper controls for weight & reps
+//  • Giant "完成第N组" button (full-width)
+//  • Inline rest countdown — no overlays, no sheets
+//  • Haptic feedback on set completion
 //
 
 import SwiftUI
 import SwiftData
 
-/// 动作详情展开视图（显示所有组，支持勾选完成）
+// MARK: - ExerciseDetailsView
+
 struct ExerciseDetailsView: View {
     let sessionExercise: SessionExercise
     let routineExercise: RoutineExercise?
+
     @Environment(\.modelContext) private var modelContext
     @State private var isExpanded: Bool
     @State private var setLogs: [SetLogEntry] = []
-    
-    init(sessionExercise: SessionExercise, routineExercise: RoutineExercise?, defaultExpanded: Bool = false) {
+
+    // Smart auto-fill: data from the most recent previous session for this exercise
+    @State private var previousSetData: [SetLogEntry] = []
+    @State private var usingPreviousData = false
+
+    // Inline rest countdown (self-contained, no dependency on parent RestTimerManager)
+    @State private var restingAfterSetIndex: Int? = nil
+    @State private var localRestRemaining: Int = 0
+    @State private var localRestTotal: Int = 1
+    @State private var localTimer: Timer?
+
+    init(sessionExercise: SessionExercise,
+         routineExercise: RoutineExercise?,
+         defaultExpanded: Bool = false) {
         self.sessionExercise = sessionExercise
         self.routineExercise = routineExercise
         _isExpanded = State(initialValue: defaultExpanded)
     }
-    
+
+    // MARK: Derived
+
+    private var targetSets: Int   { routineExercise?.targetSets ?? 3 }
+    private var isHoldType: Bool  { routineExercise?.isHoldType ?? false }
+    private var hasWeight: Bool   { routineExercise?.weightKgDefault != nil }
+    private var restSec: Int      { routineExercise?.restSecondsDefault ?? 90 }
+
+    /// Index of the first set not yet completed — the one shown with full controls
+    private var nextPendingIndex: Int? {
+        setLogs.indices.first { !setLogs[$0].isCompleted }
+    }
+
+    // MARK: Body
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 头部：动作名称和计划信息
-            Button(action: {
-                withAnimation {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(sessionExercise.exercise?.name ?? "未知动作")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        if let routineExercise {
-                            Text(planDescription(for: routineExercise))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+            headerButton
+            if isExpanded {
+                VStack(spacing: 10) {
+                    if usingPreviousData {
+                        Label("已预填充上次数据", systemImage: "arrow.counterclockwise.circle")
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.textTertiary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 2)
+                    }
+                    ForEach(0..<targetSets, id: \.self) { index in
+                        setRow(at: index)
+                        // Inline rest countdown appears directly below the just-completed set
+                        if restingAfterSetIndex == index {
+                            restCountdownBar
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
-                    
-                    Spacer()
-                    
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    statsFooter
                 }
-                .padding(.vertical, 12)
-                .contentShape(Rectangle())
+                .padding(.bottom, 18)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .animation(.easeInOut(duration: 0.22), value: restingAfterSetIndex)
             }
-            .buttonStyle(.plain)
-            
-            // 展开内容：所有组的记录
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("每组详情（勾选完成后会自动按计划填入，可修改）")
+        }
+        .onAppear { loadSetLogs() }
+        .onDisappear { stopLocalTimer() }
+        .animation(.easeInOut(duration: 0.20), value: isExpanded)
+    }
+
+    // MARK: Header
+
+    private var headerButton: some View {
+        Button { withAnimation { isExpanded.toggle() } } label: {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(sessionExercise.exercise?.name ?? "未知动作")
+                        .font(.headline)
+                        .foregroundColor(AppTheme.textPrimary)
+                    if let re = routineExercise {
+                        Text(planDescription(for: re))
+                            .font(.caption)
+                            .foregroundColor(AppTheme.textSecondary)
+                    }
+                }
+                Spacer()
+                progressDots
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.caption.bold())
+                    .foregroundColor(AppTheme.textTertiary)
+            }
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var progressDots: some View {
+        HStack(spacing: 5) {
+            ForEach(0..<targetSets, id: \.self) { i in
+                let done = setLogs[safe: i]?.isCompleted == true
+                Circle()
+                    .fill(done ? AppTheme.accent : AppTheme.border)
+                    .frame(width: 7, height: 7)
+            }
+        }
+    }
+
+    // MARK: Set Rows
+
+    @ViewBuilder
+    private func setRow(at index: Int) -> some View {
+        let log = setLogs[safe: index] ?? defaultSetLog(at: index)
+        if log.isCompleted {
+            completedSetRow(index: index, log: log)
+        } else if nextPendingIndex == index {
+            activeSetCard(index: index, log: log)
+        } else {
+            pendingSetRow(index: index, log: log)
+        }
+    }
+
+    // Compact green row for completed sets
+    private func completedSetRow(index: Int, log: SetLogEntry) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(AppTheme.accent)
+            Text("第 \(index + 1) 组")
+                .font(.subheadline.bold())
+                .foregroundColor(AppTheme.textPrimary)
+            Spacer()
+            if isHoldType {
+                Text("\(log.holdSec ?? 0) 秒")
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.textSecondary)
+            } else {
+                Group {
+                    if let kg = log.weightKg, kg > 0 {
+                        Text(String(format: "%.1f kg", kg))
+                            .foregroundColor(AppTheme.textSecondary)
+                    }
+                    Text("× \(log.reps ?? 0)")
+                        .fontWeight(.bold)
+                        .foregroundColor(AppTheme.textPrimary)
+                }
+                .font(.subheadline)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .sgCard()
+    }
+
+    // Dimmed row for future sets not yet reached
+    private func pendingSetRow(index: Int, log: SetLogEntry) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .stroke(AppTheme.border, lineWidth: 1.5)
+                .frame(width: 20, height: 20)
+            Text("第 \(index + 1) 组")
+                .font(.subheadline)
+                .foregroundColor(AppTheme.textTertiary)
+            Spacer()
+            if isHoldType {
+                Text("\(log.holdSec ?? routineExercise?.holdSecDefault ?? 0) 秒")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.textTertiary)
+            } else {
+                if let kg = log.weightKg, kg > 0 {
+                    Text(String(format: "%.1f kg", kg))
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 8)
-                    
-                    let targetSets = routineExercise?.targetSets ?? 3
-                    ForEach(0..<targetSets, id: \.self) { index in
-                        SetRowView(
-                            index: index + 1,
-                            setLog: setLogs[safe: index] ?? SetLogEntry(
-                                setIndex: index,
-                                isCompleted: false,
-                                reps: routineExercise?.repTarget,
-                                holdSec: routineExercise?.holdSecDefault,
-                                weightKg: routineExercise?.weightKgDefault
-                            ),
-                            isHoldType: routineExercise?.isHoldType ?? false,
-                            hasWeight: routineExercise?.weightKgDefault != nil,
-                            planReps: routineExercise?.repTarget,
-                            planHold: routineExercise?.holdSecDefault,
-                            restSec: routineExercise?.restSecondsDefault ?? 90,
-                            onUpdate: { newLog in
-                                updateSetLog(at: index, newLog: newLog)
+                        .foregroundColor(AppTheme.textTertiary)
+                }
+                if let reps = log.reps {
+                    Text("× \(reps)")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.textTertiary)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(AppTheme.background)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.cardRadius)
+                .stroke(AppTheme.border.opacity(0.35), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cardRadius))
+    }
+
+    // Active set: large steppers + giant complete button
+    private func activeSetCard(index: Int, log: SetLogEntry) -> some View {
+        VStack(spacing: 20) {
+            // Set label
+            HStack {
+                Text("第 \(index + 1) 组")
+                    .font(.subheadline.bold())
+                    .foregroundColor(AppTheme.accent)
+                Spacer()
+                Text("完成后自动计时")
+                    .font(.caption2)
+                    .foregroundColor(AppTheme.textTertiary)
+            }
+
+            // Controls
+            if isHoldType {
+                stepperRow(
+                    label: "秒",
+                    displayValue: "\(setLogs[safe: index]?.holdSec ?? routineExercise?.holdSecDefault ?? 0)",
+                    onDecrement: { adjustLog(at: index) { $0.holdSec = max(0, ($0.holdSec ?? 0) - 5) } },
+                    onIncrement: { adjustLog(at: index) { $0.holdSec = ($0.holdSec ?? 0) + 5 } }
+                )
+            } else {
+                HStack(spacing: 20) {
+                    if hasWeight {
+                        stepperRow(
+                            label: "kg",
+                            displayValue: {
+                                if let kg = setLogs[safe: index]?.weightKg { return String(format: "%.1f", kg) }
+                                return "—"
+                            }(),
+                            onDecrement: {
+                                adjustLog(at: index) { log in
+                                    log.weightKg = max(0, (log.weightKg ?? 0) - 2.5)
+                                }
+                            },
+                            onIncrement: {
+                                adjustLog(at: index) { log in
+                                    log.weightKg = (log.weightKg ?? 0) + 2.5
+                                }
                             }
                         )
                     }
-                    
-                    // 统计信息
-                    let totalDone = setLogs.filter { $0.isCompleted }.count
-                    let totalReps = setLogs.filter { $0.isCompleted && !isHoldType }.reduce(0) { $0 + ($1.reps ?? 0) }
-                    
-                    if routineExercise?.isHoldType == true {
-                        Text("已完成：\(totalDone)/\(targetSets) 组 · 组间休息：\(routineExercise?.restSecondsDefault ?? 90)秒（建议）")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("已完成总次数：\(totalReps) · 已完成：\(totalDone)/\(targetSets) 组 · 组间休息：\(routineExercise?.restSecondsDefault ?? 90)秒（建议）")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    stepperRow(
+                        label: "次",
+                        displayValue: "\(setLogs[safe: index]?.reps ?? 0)",
+                        onDecrement: { adjustLog(at: index) { $0.reps = max(0, ($0.reps ?? 0) - 1) } },
+                        onIncrement: { adjustLog(at: index) { $0.reps = ($0.reps ?? 0) + 1 } }
+                    )
                 }
-                .padding(.bottom, 12)
             }
+
+            // Giant "完成" button — full width, 56 pt height
+            Button { completeActiveSet(at: index) } label: {
+                Text("完成第 \(index + 1) 组")
+            }
+            .buttonStyle(SGPrimaryButtonStyle())
         }
-        .onAppear {
-            loadSetLogs()
+        .padding(18)
+        .sgActiveCard()
+    }
+
+    // Stepper control: large [−] VALUE [+]
+    private func stepperRow(
+        label: String,
+        displayValue: String,
+        onDecrement: @escaping () -> Void,
+        onIncrement: @escaping () -> Void
+    ) -> some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 16) {
+                Button(action: onDecrement) {
+                    Image(systemName: "minus")
+                        .font(.title3.bold())
+                        .frame(width: 48, height: 48)
+                        .background(AppTheme.surfaceElevated)
+                        .foregroundColor(AppTheme.textPrimary)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+
+                Text(displayValue)
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.textPrimary)
+                    .frame(minWidth: 76, alignment: .center)
+                    .monospacedDigit()
+                    .lineLimit(1)
+
+                Button(action: onIncrement) {
+                    Image(systemName: "plus")
+                        .font(.title3.bold())
+                        .frame(width: 48, height: 48)
+                        .background(AppTheme.surfaceElevated)
+                        .foregroundColor(AppTheme.textPrimary)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            Text(label)
+                .font(.caption.bold())
+                .foregroundColor(AppTheme.textSecondary)
         }
     }
-    
-    private func loadSetLogs() {
-        guard let sets = sessionExercise.sets?.sorted(by: { $0.setIndex < $1.setIndex }) else {
-            // 初始化空记录
-            let targetSets = routineExercise?.targetSets ?? 3
-            setLogs = (0..<targetSets).map { index in
-                SetLogEntry(
-                    setIndex: index,
-                    isCompleted: false,
-                    reps: routineExercise?.repTarget,
-                    holdSec: routineExercise?.holdSecDefault,
-                    weightKg: routineExercise?.weightKgDefault
-                )
+
+    // MARK: Inline Rest Countdown
+
+    private var restCountdownBar: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Image(systemName: "timer")
+                    .font(.caption.bold())
+                    .foregroundColor(AppTheme.accent)
+                Text("休息 \(localRestRemaining)s")
+                    .font(.subheadline.bold())
+                    .foregroundColor(AppTheme.accent)
+                    .monospacedDigit()
+                Spacer()
+                Button("跳过") {
+                    stopLocalTimer()
+                    withAnimation { restingAfterSetIndex = nil }
+                }
+                .font(.caption.bold())
+                .foregroundColor(AppTheme.textSecondary)
+                .buttonStyle(.plain)
             }
-            return
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(AppTheme.border).frame(height: 5)
+                    Capsule()
+                        .fill(AppTheme.accent)
+                        .frame(
+                            width: geo.size.width * CGFloat(localRestRemaining) / CGFloat(max(1, localRestTotal)),
+                            height: 5
+                        )
+                        .animation(.linear(duration: 1), value: localRestRemaining)
+                }
+            }
+            .frame(height: 5)
         }
-        
-        let targetSets = routineExercise?.targetSets ?? 3
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(AppTheme.accent.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: Stats Footer
+
+    private var statsFooter: some View {
+        let done = setLogs.filter(\.isCompleted).count
+        let totalReps = setLogs.filter { $0.isCompleted && !isHoldType }
+            .reduce(0) { $0 + ($1.reps ?? 0) }
+        return Text(
+            isHoldType
+                ? "\(done)/\(targetSets) 组完成 · 休息建议 \(restSec)s"
+                : "\(done)/\(targetSets) 组完成 · 总次数 \(totalReps) · 休息 \(restSec)s"
+        )
+        .font(.caption)
+        .foregroundColor(AppTheme.textTertiary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 4)
+    }
+
+    // MARK: Actions
+
+    private func adjustLog(at index: Int, mutation: (inout SetLogEntry) -> Void) {
+        guard index < setLogs.count else { return }
+        var log = setLogs[index]
+        mutation(&log)
+        setLogs[index] = log
+    }
+
+    private func completeActiveSet(at index: Int) {
+        guard index < setLogs.count else { return }
+        var log = setLogs[index]
+        log.isCompleted = true
+        // Ensure a sensible fallback if user never touched the stepper
+        if !isHoldType && (log.reps == nil || log.reps == 0) {
+            log.reps = routineExercise?.repTarget ?? 0
+        }
+        if isHoldType && (log.holdSec == nil || log.holdSec == 0) {
+            log.holdSec = routineExercise?.holdSecDefault ?? 0
+        }
+        setLogs[index] = log
+        persistSetLog(at: index, log: log)
+
+        #if os(iOS)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
+
+        // Start local inline rest countdown
+        if restSec > 0 {
+            startLocalRest(seconds: restSec, afterIndex: index)
+        }
+
+        // Tell parent (TrainViewWireframe / TrainView) to also start its global timer
+        NotificationCenter.default.post(
+            name: NSNotification.Name("StartRestTimer"),
+            object: nil,
+            userInfo: ["restSeconds": restSec]
+        )
+    }
+
+    // MARK: Local Rest Timer
+
+    private func startLocalRest(seconds: Int, afterIndex: Int) {
+        stopLocalTimer()
+        localRestRemaining = seconds
+        localRestTotal = seconds
+        withAnimation { restingAfterSetIndex = afterIndex }
+        localTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            DispatchQueue.main.async {
+                if self.localRestRemaining > 0 {
+                    self.localRestRemaining -= 1
+                } else {
+                    self.stopLocalTimer()
+                    withAnimation { self.restingAfterSetIndex = nil }
+                    #if os(iOS)
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    #endif
+                }
+            }
+        }
+    }
+
+    private func stopLocalTimer() {
+        localTimer?.invalidate()
+        localTimer = nil
+    }
+
+    // MARK: Persistence
+
+    private func persistSetLog(at index: Int, log: SetLogEntry) {
+        if let existing = sessionExercise.sets?.first(where: { $0.setIndex == index }) {
+            existing.isCompleted = true
+            existing.reps       = log.reps ?? 0
+            existing.holdSec    = log.holdSec
+            existing.weightKg   = log.weightKg
+            existing.rir        = 1
+        } else {
+            let entry = SetEntry(
+                sessionExercise: sessionExercise,
+                setIndex:        index,
+                reps:            log.reps ?? 0,
+                rir:             1,
+                restSecondsUsed: 0,
+                holdSec:         log.holdSec,
+                weightKg:        log.weightKg,
+                isCompleted:     true
+            )
+            modelContext.insert(entry)
+        }
+        try? modelContext.save()
+    }
+
+    // MARK: Load + Auto-fill
+
+    private func loadSetLogs() {
+        loadPreviousSessionData()
+        let existingSets = sessionExercise.sets?.sorted { $0.setIndex < $1.setIndex } ?? []
         var logs: [SetLogEntry] = []
-        
-        for index in 0..<targetSets {
-            if let set = sets.first(where: { $0.setIndex == index }) {
+        for i in 0..<targetSets {
+            if let set = existingSets.first(where: { $0.setIndex == i }) {
                 logs.append(SetLogEntry(
-                    setIndex: index,
+                    setIndex:    i,
                     isCompleted: set.isCompleted,
-                    reps: set.reps > 0 ? set.reps : nil,
-                    holdSec: set.holdSec,
-                    weightKg: set.weightKg
+                    reps:        set.reps > 0 ? set.reps : nil,
+                    holdSec:     set.holdSec,
+                    weightKg:    set.weightKg
                 ))
             } else {
+                // Cascade: previous-session actual → plan default
+                let prev = previousSetData[safe: i]
                 logs.append(SetLogEntry(
-                    setIndex: index,
+                    setIndex:    i,
                     isCompleted: false,
-                    reps: routineExercise?.repTarget,
-                    holdSec: routineExercise?.holdSecDefault,
-                    weightKg: routineExercise?.weightKgDefault
+                    reps:        prev?.reps     ?? routineExercise?.repTarget,
+                    holdSec:     prev?.holdSec  ?? routineExercise?.holdSecDefault,
+                    weightKg:    prev?.weightKg ?? routineExercise?.weightKgDefault
                 ))
             }
         }
-        
         setLogs = logs
     }
-    
-    private func updateSetLog(at index: Int, newLog: SetLogEntry) {
-        guard index < setLogs.count else { return }
-        
-        setLogs[index] = newLog
-        
-        // 保存到数据库
-        if newLog.isCompleted {
-            // 查找或创建 SetEntry
-            let existingSet = sessionExercise.sets?.first { $0.setIndex == index }
-            
-            if let existingSet = existingSet {
-                existingSet.isCompleted = true
-                existingSet.reps = newLog.reps ?? 0
-                existingSet.holdSec = newLog.holdSec
-                existingSet.weightKg = newLog.weightKg
-                existingSet.rir = 1 // 默认 RIR
-            } else {
-                let setEntry = SetEntry(
-                    sessionExercise: sessionExercise,
-                    setIndex: index,
-                    reps: newLog.reps ?? 0,
-                    rir: 1,
-                    restSecondsUsed: 0,
-                    holdSec: newLog.holdSec,
-                    weightKg: newLog.weightKg,
-                    isCompleted: true
-                )
-                modelContext.insert(setEntry)
-            }
-            
-            do {
-                try modelContext.save()
-            } catch {
-                print("Error saving set entry: \(error)")
-            }
-            
-            // 如果从未完成变为完成，触发休息计时
-            if let restSec = routineExercise?.restSecondsDefault, restSec > 0 {
-                // 通过 NotificationCenter 通知父组件启动休息
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("StartRestTimer"),
-                    object: nil,
-                    userInfo: ["restSeconds": restSec]
-                )
-            }
+
+    /// Fetch the most recent completed session's data for this exercise.
+    private func loadPreviousSessionData() {
+        guard let exerciseId       = sessionExercise.exercise?.id,
+              let currentSessionId = sessionExercise.session?.id else { return }
+
+        let allSE = (try? modelContext.fetch(FetchDescriptor<SessionExercise>())) ?? []
+        let previousSEs = allSE
+            .filter { $0.exercise?.id == exerciseId && $0.session?.id != currentSessionId }
+            .sorted { ($0.session?.startAt ?? .distantPast) > ($1.session?.startAt ?? .distantPast) }
+
+        guard let lastSE   = previousSEs.first,
+              let lastSets = lastSE.sets?.sorted(by: { $0.setIndex < $1.setIndex }),
+              !lastSets.isEmpty else { return }
+
+        previousSetData = lastSets.map { set in
+            SetLogEntry(
+                setIndex:    set.setIndex,
+                isCompleted: false,
+                reps:        set.reps > 0 ? set.reps : nil,
+                holdSec:     set.holdSec,
+                weightKg:    set.weightKg
+            )
         }
+        usingPreviousData = true
     }
-    
-    private var isHoldType: Bool {
-        routineExercise?.isHoldType ?? false
+
+    private func defaultSetLog(at index: Int) -> SetLogEntry {
+        SetLogEntry(
+            setIndex:    index,
+            isCompleted: false,
+            reps:        routineExercise?.repTarget,
+            holdSec:     routineExercise?.holdSecDefault,
+            weightKg:    routineExercise?.weightKgDefault
+        )
     }
-    
-    private func planDescription(for routineExercise: RoutineExercise) -> String {
-        let planText = "\(routineExercise.targetSets)组"
-        let detailText: String
-        if routineExercise.isHoldType, let holdSec = routineExercise.holdSecDefault {
-            detailText = "×\(holdSec)秒"
-        } else if let repTarget = routineExercise.repTarget {
-            detailText = "×\(repTarget)次"
-        } else {
-            detailText = ""
-        }
-        return "计划：\(planText)\(detailText) · 休息：\(routineExercise.restSecondsDefault)秒"
+
+    private func planDescription(for re: RoutineExercise) -> String {
+        let detail: String
+        if re.isHoldType, let s = re.holdSecDefault { detail = "×\(s)s" }
+        else if let r = re.repTarget               { detail = "×\(r)次" }
+        else                                       { detail = "" }
+        return "\(re.targetSets)组\(detail) · 休 \(re.restSecondsDefault)s"
     }
 }
 
-/// 单组记录视图
-struct SetRowView: View {
-    let index: Int
-    @State var setLog: SetLogEntry
-    let isHoldType: Bool
-    let hasWeight: Bool
-    let planReps: Int?
-    let planHold: Int?
-    let restSec: Int
-    let onUpdate: (SetLogEntry) -> Void
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            // 完成按钮
-            Button(action: {
-                var newLog = setLog
-                newLog.isCompleted.toggle()
-                
-                // 如果勾选完成且次数为空，自动填入计划次数
-                if newLog.isCompleted && !isHoldType && newLog.reps == nil {
-                    newLog.reps = planReps ?? 0
-                }
-                
-                setLog = newLog
-                onUpdate(newLog)
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: setLog.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(setLog.isCompleted ? .green : .gray)
-                    Text("第\(index)组")
-                        .font(.caption)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(setLog.isCompleted ? Color.green.opacity(0.1) : Color(.systemGray6))
-                .cornerRadius(8)
-            }
-            .buttonStyle(.plain)
-            
-            // 重量输入（如果有）
-            if hasWeight {
-                HStack(spacing: 4) {
-                    Text("重量(kg)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    InlineDoubleField(
-                        value: Binding(
-                            get: { setLog.weightKg },
-                            set: { newValue in
-                                var newLog = setLog
-                                newLog.weightKg = newValue
-                                setLog = newLog
-                                onUpdate(newLog)
-                            }
-                        ),
-                        placeholder: "0"
-                    )
-                    .frame(width: 60)
-                }
-            }
-            
-            // 次数或时长输入
-            if isHoldType {
-                HStack(spacing: 4) {
-                    Text("秒")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    InlineNumberField(
-                        value: Binding(
-                            get: { setLog.holdSec },
-                            set: { newValue in
-                                var newLog = setLog
-                                newLog.holdSec = newValue
-                                setLog = newLog
-                                onUpdate(newLog)
-                            }
-                        ),
-                        placeholder: "\(planHold ?? 0)"
-                    )
-                    .frame(width: 60)
-                }
-            } else {
-                HStack(spacing: 8) {
-                    HStack(spacing: 4) {
-                        Text("次数")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        InlineNumberField(
-                            value: Binding(
-                                get: { setLog.reps },
-                                set: { newValue in
-                                    var newLog = setLog
-                                    newLog.reps = newValue
-                                    setLog = newLog
-                                    onUpdate(newLog)
-                                }
-                            ),
-                            placeholder: "\(planReps ?? 0)"
-                        )
-                        .frame(width: 60)
-                    }
-                    
-                    // 快捷计数按钮
-                    HStack(spacing: 4) {
-                        Button(action: {
-                            var newLog = setLog
-                            let current = newLog.reps ?? planReps ?? 0
-                            newLog.reps = max(0, current - 1)
-                            setLog = newLog
-                            onUpdate(newLog)
-                        }) {
-                            Text("-1")
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(6)
-                        }
-                        .buttonStyle(.plain)
-                        
-                        Button(action: {
-                            var newLog = setLog
-                            let current = newLog.reps ?? planReps ?? 0
-                            newLog.reps = current + 1
-                            setLog = newLog
-                            onUpdate(newLog)
-                        }) {
-                            Text("+1")
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(6)
-                        }
-                        .buttonStyle(.plain)
-                        
-                        Button(action: {
-                            var newLog = setLog
-                            let current = newLog.reps ?? planReps ?? 0
-                            newLog.reps = current + 5
-                            setLog = newLog
-                            onUpdate(newLog)
-                        }) {
-                            Text("+5")
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(6)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            
-            Spacer()
-        }
-        .padding(.vertical, 4)
-    }
+// MARK: - Set Log Entry
+
+struct SetLogEntry {
+    var setIndex: Int
+    var isCompleted: Bool
+    var reps: Int?
+    var holdSec: Int?
+    var weightKg: Double?
 }
 
-/// 行内数字输入框（Int）
+// MARK: - Inline Field Components (kept for compatibility with Routines views)
+
 struct InlineNumberField: View {
     @Binding var value: Int?
     @State private var isEditing = false
     @State private var draftText: String = ""
     let placeholder: String
-    
+
     var body: some View {
         if isEditing {
             TextField(placeholder, text: $draftText)
                 .keyboardType(.numberPad)
                 .textFieldStyle(.roundedBorder)
                 .font(.caption)
-                .onSubmit {
-                    commit()
-                }
-                .onAppear {
-                    draftText = value?.description ?? ""
-                }
+                .onSubmit { commit() }
+                .onAppear { draftText = value?.description ?? "" }
         } else {
-            Button(action: {
-                isEditing = true
-            }) {
+            Button { isEditing = true } label: {
                 Text(value?.description ?? placeholder)
                     .font(.caption)
                     .foregroundColor(value != nil ? .primary : .secondary)
@@ -411,40 +576,29 @@ struct InlineNumberField: View {
             .buttonStyle(.plain)
         }
     }
-    
+
     private func commit() {
-        if let intValue = Int(draftText) {
-            value = intValue
-        } else if draftText.isEmpty {
-            value = nil
-        }
+        value = Int(draftText) ?? (draftText.isEmpty ? nil : value)
         isEditing = false
     }
 }
 
-/// 行内浮点数输入框（Double，用于重量）
 struct InlineDoubleField: View {
     @Binding var value: Double?
     @State private var isEditing = false
     @State private var draftText: String = ""
     let placeholder: String
-    
+
     var body: some View {
         if isEditing {
             TextField(placeholder, text: $draftText)
                 .keyboardType(.decimalPad)
                 .textFieldStyle(.roundedBorder)
                 .font(.caption)
-                .onSubmit {
-                    commit()
-                }
-                .onAppear {
-                    draftText = value != nil ? String(format: "%.1f", value!) : ""
-                }
+                .onSubmit { commit() }
+                .onAppear { draftText = value != nil ? String(format: "%.1f", value!) : "" }
         } else {
-            Button(action: {
-                isEditing = true
-            }) {
+            Button { isEditing = true } label: {
                 Text(value != nil ? String(format: "%.1f", value!) : placeholder)
                     .font(.caption)
                     .foregroundColor(value != nil ? .primary : .secondary)
@@ -457,25 +611,11 @@ struct InlineDoubleField: View {
             .buttonStyle(.plain)
         }
     }
-    
+
     private func commit() {
-        if let doubleValue = Double(draftText) {
-            value = doubleValue
-        } else if draftText.isEmpty {
-            value = nil
-        }
+        value = Double(draftText) ?? (draftText.isEmpty ? nil : value)
         isEditing = false
     }
 }
 
-/// 组记录数据模型（临时，用于 UI）
-struct SetLogEntry {
-    var setIndex: Int
-    var isCompleted: Bool
-    var reps: Int?
-    var holdSec: Int?
-    var weightKg: Double?
-}
-
-// subscript(safe:) 已在 TrainViewWireframe.swift 中定义，这里不再重复定义
-
+// subscript(safe:) is defined in TrainViewWireframe.swift as a global Array extension

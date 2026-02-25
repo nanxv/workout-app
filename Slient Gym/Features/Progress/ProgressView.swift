@@ -16,6 +16,14 @@ struct ProgressView: View {
     var body: some View {
         NavigationStack {
             List {
+                // Muscle heatmap — top of progress screen for instant visual feedback
+                Section {
+                    MuscleHeatmapView(sessions: Array(sessions.prefix(30)))
+                        .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+
                 weeklySummarySection
                 exerciseTrendsSection
             }

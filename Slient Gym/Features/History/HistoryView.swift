@@ -32,7 +32,8 @@ struct HistoryView: View {
     @State private var calendarMonth = Date()
     @State private var selectedDay: Date?
     @State private var deleteCandidate: Session?
-    
+    @State private var shareSession: Session?
+
     let selectedRoutineId: UUID?
     
     init(selectedRoutineId: UUID? = nil) {
@@ -111,6 +112,9 @@ struct HistoryView: View {
             .sheet(isPresented: $showNRCGuide) {
                 NRCSetupGuideView()
             }
+            .sheet(item: $shareSession) { session in
+                WorkoutShareSheet(session: session)
+            }
             .alert("删除记录", isPresented: Binding(
                 get: { deleteCandidate != nil },
                 set: { if !$0 { deleteCandidate = nil } }
@@ -150,6 +154,11 @@ struct HistoryView: View {
                 .contextMenu {
                     Button("复制摘要") {
                         copySummary(for: session)
+                    }
+                    Button {
+                        shareSession = session
+                    } label: {
+                        Label("生成分享卡片", systemImage: "square.and.arrow.up")
                     }
                     Button("删除记录", role: .destructive) {
                         deleteCandidate = session
