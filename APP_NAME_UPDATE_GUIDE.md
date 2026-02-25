@@ -6,7 +6,7 @@
 
 1. **打开 Xcode 项目**
 2. **选择项目文件**（最顶部的蓝色图标）
-3. **选择 "Slient Gym" target**（不是项目）
+3. **选择 "Silent Gym" target**（不是项目）
 4. **切换到 "Info" 标签**
 5. **在 "Custom iOS Target Properties" 部分，点击 "+" 按钮添加：**
 
@@ -16,7 +16,7 @@
 
 ### 方法 2：在 Build Settings 中添加
 
-1. **选择 "Slient Gym" target**
+1. **选择 "Silent Gym" target**
 2. **切换到 "Build Settings" 标签**
 3. **在搜索框中输入 `INFOPLIST_KEY`**
 4. **点击 "+" 按钮添加：**
@@ -31,9 +31,9 @@
 
 ## 注意事项
 
-- **Bundle Identifier** 保持不变：`ZC.POB.Slient-Gym`（不需要改）
-- **项目名称**（Slient Gym）可以保持不变，只改显示名称
-- **代码中的引用**（如 `Slient_GymApp`）不需要改，只影响用户看到的名称
+- **Bundle Identifier** 保持不变：`ZC.POB.Silent-Gym`（不需要改）
+- **项目名称**（Silent Gym）可以保持不变，只改显示名称
+- **代码中的引用**（如 `Silent_GymApp`）不需要改，只影响用户看到的名称
 
 ## 图标
 

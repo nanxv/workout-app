@@ -29,7 +29,7 @@
 ### 方法 A：拖拽到 Asset Catalog（推荐）
 
 1. **打开 Xcode**
-2. **在项目导航器中，找到并展开 `Slient Gym/Assets.xcassets`**
+2. **在项目导航器中，找到并展开 `Silent Gym/Assets.xcassets`**
 3. **点击 `AppIcon`**
 4. **将生成的图标文件拖拽到对应的尺寸槽位：**
 
@@ -44,7 +44,7 @@
 
 1. **找到图标文件目录**：
    ```
-   Slient Gym/Assets.xcassets/AppIcon.appiconset/
+   Silent Gym/Assets.xcassets/AppIcon.appiconset/
    ```
 
 2. **复制所有 PNG 文件到此目录**

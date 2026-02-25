@@ -14,12 +14,12 @@
 ### 1. 添加 watchOS Target
 
 1. 在 Xcode 中打开项目
-2. 选择项目文件（Slient Gym.xcodeproj）
+2. 选择项目文件（Silent Gym.xcodeproj）
 3. 点击左下角的 "+" 按钮添加新 Target
 4. 选择 **watchOS > App**
 5. 配置：
-   - Product Name: `Slient Gym Watch App`
-   - Bundle Identifier: `ZC.POB.Slient-Gym.watchkitapp`
+   - Product Name: `Silent Gym Watch App`
+   - Bundle Identifier: `ZC.POB.Silent-Gym.watchkitapp`
    - Language: Swift
    - Interface: SwiftUI
    - Include Notification Scene: 可选
@@ -31,11 +31,11 @@
 将以下文件添加到 watchOS target（在 File Inspector 中勾选 target membership）：
 
 **必须添加到 watchOS target：**
-- `Slient Gym Watch App/App/Slient_GymWatchApp.swift`
-- `Slient Gym Watch App/Data/Health/WatchWorkoutManager.swift`
-- `Slient Gym Watch App/Features/Workout/WorkoutView.swift`
-- `Slient Gym/Shared/DTO/WatchMessage.swift`
-- `Slient Gym/Data/WatchConnectivity/WatchConnectivityManager.swift`（共享）
+- `Silent Gym Watch App/App/Silent_GymWatchApp.swift`
+- `Silent Gym Watch App/Data/Health/WatchWorkoutManager.swift`
+- `Silent Gym Watch App/Features/Workout/WorkoutView.swift`
+- `Silent Gym/Shared/DTO/WatchMessage.swift`
+- `Silent Gym/Data/WatchConnectivity/WatchConnectivityManager.swift`（共享）
 
 **可选（如果需要共享数据模型）：**
 - 如果需要 watchOS 也能访问 SwiftData，需要添加数据模型文件
@@ -70,12 +70,12 @@
 
 确保 watchOS app 的 Bundle Identifier 格式为：
 ```
-ZC.POB.Slient-Gym.watchkitapp
+ZC.POB.Silent-Gym.watchkitapp
 ```
 
 watchOS extension（如果有）应该是：
 ```
-ZC.POB.Slient-Gym.watchkitapp.watchkitextension
+ZC.POB.Silent-Gym.watchkitapp.watchkitextension
 ```
 
 ### 4. 添加依赖
@@ -89,7 +89,7 @@ ZC.POB.Slient-Gym.watchkitapp.watchkitextension
 
 ### 5. 配置 Scheme
 
-1. 在 Xcode 中，选择 Scheme: `Slient Gym Watch App`
+1. 在 Xcode 中，选择 Scheme: `Silent Gym Watch App`
 2. 确保选择了正确的 watchOS 设备或模拟器
 3. 运行 iOS app 时，确保 watchOS app 也会自动安装
 
@@ -164,7 +164,7 @@ ZC.POB.Slient-Gym.watchkitapp.watchkitextension
 ## 代码结构
 
 ```
-Slient Gym/
+Silent Gym/
 ├── Shared/
 │   └── DTO/
 │       └── WatchMessage.swift          # 共享消息协议
@@ -173,9 +173,9 @@ Slient Gym/
 │   │   └── WatchConnectivityManager.swift  # iOS/watchOS 共享
 │   └── Health/
 │       └── WatchWorkoutLauncher.swift   # iOS 端
-└── Slient Gym Watch App/
+└── Silent Gym Watch App/
     ├── App/
-    │   └── Slient_GymWatchApp.swift     # watchOS app 入口
+    │   └── Silent_GymWatchApp.swift     # watchOS app 入口
     ├── Data/
     │   └── Health/
     │       └── WatchWorkoutManager.swift # watchOS workout 管理

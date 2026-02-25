@@ -8,7 +8,7 @@
 ### 步骤 1：打开 Build Settings
 
 1. 在 Xcode 中，选择项目文件（最顶部的蓝色图标）
-2. 选择 **Slient Gym** target（不是项目）
+2. 选择 **Silent Gym** target（不是项目）
 3. 切换到 **Build Settings** 标签
 4. 在搜索框中输入 `INFOPLIST_KEY`
 
@@ -34,7 +34,7 @@
 
 ### 方法 2：在 Info 标签中添加
 
-1. 选择 **Slient Gym** target
+1. 选择 **Silent Gym** target
 2. 切换到 **Info** 标签
 3. 在 **Custom iOS Target Properties** 部分，点击 **+** 按钮
 4. 添加以下键值对：

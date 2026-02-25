@@ -28,7 +28,7 @@
 ### P0 任务
 
 1. **统一更名**
-   - [ ] 项目名：Slient → Silent
+   - [ ] 项目名：Silent → Silent
    - [ ] Scheme 名称
    - [ ] Display Name
    - [ ] 目录名（可选）

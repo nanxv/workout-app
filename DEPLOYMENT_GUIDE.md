@@ -44,7 +44,7 @@
 
 1. 在 Xcode 中打开项目
 2. 选择项目文件（左侧导航栏最顶部）
-3. 选择 **Slient Gym** target
+3. 选择 **Silent Gym** target
 4. 选择 **Signing & Capabilities** 标签
 
 #### 配置签名：
@@ -59,7 +59,7 @@
 
 ### 2.2 配置 watchOS Target（如果存在）
 
-1. 选择 **Slient Gym Watch App** target
+1. 选择 **Silent Gym Watch App** target
 2. 选择 **Signing & Capabilities** 标签
 
 #### 配置签名：
@@ -113,7 +113,7 @@
 
 ### 5.1 构建 iOS App
 
-1. 在 Xcode 顶部，确保选择了 **Slient Gym** scheme
+1. 在 Xcode 顶部，确保选择了 **Silent Gym** scheme
 2. 选择你的 iPhone 作为目标设备
 3. 点击 **▶️ Run** 按钮（或按 `Cmd + R`）
 
@@ -147,7 +147,7 @@ No provisioning profile found
 
 ### 5.2 构建 watchOS App（如果已配置）
 
-1. 在 Xcode 顶部，选择 **Slient Gym Watch App** scheme
+1. 在 Xcode 顶部，选择 **Silent Gym Watch App** scheme
 2. 选择配对的 Apple Watch 作为目标设备
 3. 点击 **▶️ Run** 按钮
 

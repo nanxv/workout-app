@@ -32,7 +32,7 @@
 
 1. 在 Xcode 中打开项目
 2. 点击左侧项目导航器中的项目文件（最顶部的蓝色图标）
-3. 选择 **Slient Gym** target（不是项目，是 target）
+3. 选择 **Silent Gym** target（不是项目，是 target）
 
 ### 2. 配置 Signing & Capabilities
 
@@ -44,7 +44,7 @@
 ### 3. 配置 Bundle Identifier
 
 1. 在 **Signing & Capabilities** 中，找到 **Bundle Identifier**
-2. 确保它是唯一的，例如：`ZC.POB.Slient-Gym`（如果冲突，可以改成 `com.yourname.Slient-Gym`）
+2. 确保它是唯一的，例如：`ZC.POB.Silent-Gym`（如果冲突，可以改成 `com.yourname.Silent-Gym`）
 
 ## 连接 iPhone
 
@@ -114,7 +114,7 @@
 
 **解决方案：**
 1. 修改 Bundle Identifier 为唯一值
-2. 例如：`com.yourname.Slient-Gym` 或 `com.yourname.slientgym`
+2. 例如：`com.yourname.Silent-Gym` 或 `com.yourname.slientgym`
 
 ### Q: 应用安装后无法打开，显示"未受信任的企业级开发者"
 

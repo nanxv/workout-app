@@ -98,7 +98,7 @@
 ## 📁 项目结构
 
 ```
-Slient Gym/
+Silent Gym/
 ├── Domain/
 │   ├── Models/              # 7 个数据模型
 │   └── UseCases/            # 业务逻辑
@@ -117,7 +117,7 @@ Slient Gym/
 │   └── Settings/            # 设置（NRC 引导）
 ├── Shared/
 │   └── DTO/                 # 共享协议
-└── Slient Gym Watch App/    # watchOS app
+└── Silent Gym Watch App/    # watchOS app
 ```
 
 ---

@@ -1,7 +1,7 @@
 # TASKS_M1_CHECKLIST — Silent Gym (M1: iPhone→Watch→Health 闭环)
 
 ## P0｜真机闭环（必须先过）
-- [ ] 统一命名：将 **Slient** 全部改为 **Silent**（目录、scheme、Display Name）
+- [ ] 统一命名：将 **Silent** 全部改为 **Silent**（目录、scheme、Display Name）
 - [ ] Target 归属：共享管理器文件均勾选到正确 target（iOS / watchOS）
 - [ ] iOS Capabilities：HealthKit（Share+Update），（可选）Background → HealthKit
 - [ ] watchOS Capabilities：HealthKit + Background → Workout Processing

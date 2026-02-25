@@ -30,7 +30,7 @@
 ## 📋 待完成的改进
 
 ### A. 工程与权限配置（需在 Xcode 中完成）
-- [ ] 修正命名：Slient → Silent
+- [ ] 修正命名：Silent → Silent
 - [ ] 配置 Capabilities（HealthKit）
 - [ ] 在 Info 标签添加权限描述
 - [ ] 添加权限拒绝引导页

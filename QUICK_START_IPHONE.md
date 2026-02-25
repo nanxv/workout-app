@@ -25,11 +25,11 @@
 ## 第三步：配置项目签名
 
 1. 在 Xcode 中，点击左侧项目导航器中的项目文件（最顶部的蓝色图标）
-2. 选择 **Slient Gym** target（不是项目，是 target）
+2. 选择 **Silent Gym** target（不是项目，是 target）
 3. 切换到 **Signing & Capabilities** 标签
 4. 勾选 **Automatically manage signing**
 5. 在 **Team** 下拉菜单中选择你的 Apple ID
-6. 如果 Bundle Identifier 冲突，修改为唯一值（例如：`com.yourname.Slient-Gym`）
+6. 如果 Bundle Identifier 冲突，修改为唯一值（例如：`com.yourname.Silent-Gym`）
 
 ---
 
@@ -97,7 +97,7 @@
 
 **解决方案：**
 1. 修改 Bundle Identifier 为唯一值
-2. 例如：`com.yourname.Slient-Gym` 或 `com.yourname.slientgym`
+2. 例如：`com.yourname.Silent-Gym` 或 `com.yourname.slientgym`
 
 ### Q: 应用安装后无法打开
 
@@ -117,7 +117,7 @@
 
 ## 重要：添加权限描述
 
-在 Xcode 中，选择 **Slient Gym** target，切换到 **Info** 标签，添加以下权限描述：
+在 Xcode 中，选择 **Silent Gym** target，切换到 **Info** 标签，添加以下权限描述：
 
 | Key | Value |
 |-----|-------|

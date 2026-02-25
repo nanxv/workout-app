@@ -34,7 +34,7 @@
 2. 上传您的 1024×1024 图标
 3. 选择 iOS 平台
 4. 下载生成的图标包
-5. 解压后，将所有 PNG 文件复制到 `Slient Gym/Assets.xcassets/AppIcon.appiconset/` 目录
+5. 解压后，将所有 PNG 文件复制到 `Silent Gym/Assets.xcassets/AppIcon.appiconset/` 目录
 
 ### 方法 2：使用 Image2icon（macOS App）
 
@@ -42,12 +42,12 @@
 2. 打开应用
 3. 拖入您的 1024×1024 图标
 4. 选择 "iOS App Icon"
-5. 导出到 `Slient Gym/Assets.xcassets/AppIcon.appiconset/` 目录
+5. 导出到 `Silent Gym/Assets.xcassets/AppIcon.appiconset/` 目录
 
 ## 在 Xcode 中设置
 
 1. **打开 Xcode**
-2. **在项目导航器中，找到 `Slient Gym/Assets.xcassets`**
+2. **在项目导航器中，找到 `Silent Gym/Assets.xcassets`**
 3. **展开并点击 `AppIcon`**
 4. **将图标文件拖拽到对应的尺寸槽位**
 

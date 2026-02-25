@@ -18,7 +18,7 @@
 - [ ] 训练页状态点显示
 
 ### 📋 待配置（Xcode）
-- [ ] 命名修正（Slient → Silent）
+- [ ] 命名修正（Silent → Silent）
 - [ ] Capabilities 配置
 - [ ] Info.plist 权限描述
 - [ ] Target Membership 配置

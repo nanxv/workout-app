@@ -1,4 +1,4 @@
-# Slient Gym - iOS 训练记录应用
+# Silent Gym - iOS 训练记录应用
 
 一款专注于"训练中极省脑、训练后可复盘"的 iOS 训练记录应用，深度集成 Apple 生态。
 
@@ -157,7 +157,7 @@
 ## 项目结构
 
 ```
-Slient Gym/
+Silent Gym/
 ├── Domain/
 │   ├── Models/          # SwiftData 实体
 │   └── UseCases/        # 业务逻辑
@@ -174,7 +174,7 @@ Slient Gym/
 │   └── MainTabView.swift
 ├── Shared/
 │   └── DTO/             # 共享数据协议
-└── Slient Gym Watch App/  # watchOS app
+└── Silent Gym Watch App/  # watchOS app
     ├── App/
     ├── Data/
     └── Features/

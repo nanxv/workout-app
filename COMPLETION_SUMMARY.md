@@ -47,7 +47,7 @@
 ### 必须完成（P0）
 
 1. **统一更名**
-   - [ ] 项目名：Slient → Silent
+   - [ ] 项目名：Silent → Silent
    - [ ] Scheme 名称
    - [ ] Display Name
 

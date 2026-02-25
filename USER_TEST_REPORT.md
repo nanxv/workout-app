@@ -1,4 +1,4 @@
-# 用户测试报告 - Slient Gym App
+# 用户测试报告 - Silent Gym App
 
 ## 测试环境
 - 设备：iPhone 17 模拟器

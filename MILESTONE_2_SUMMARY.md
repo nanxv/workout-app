@@ -29,12 +29,12 @@
 
 ## 📁 新增文件
 
-1. `Slient Gym/Data/Calendar/CalendarManager.swift`
+1. `Silent Gym/Data/Calendar/CalendarManager.swift`
    - EventKit 集成
    - 权限管理
    - 事件创建逻辑
 
-2. `Slient Gym/Features/Train/CalendarEventSheet.swift`
+2. `Silent Gym/Features/Train/CalendarEventSheet.swift`
    - SwiftUI 包装 EKEventEditViewController
    - 用于在训练结束后展示日历编辑界面
 

@@ -31,7 +31,7 @@ iOS 应用图标需要提供多种尺寸，以适配不同的设备和用途：
 ### 方法 1：使用 Asset Catalog（推荐）
 
 1. **打开 Xcode 项目**
-2. **在项目导航器中，找到 `Slient Gym/Assets.xcassets`**
+2. **在项目导航器中，找到 `Silent Gym/Assets.xcassets`**
 3. **展开 `Assets.xcassets`，点击 `AppIcon`**
 4. **将您的图标文件拖拽到对应的尺寸槽位中**
 
@@ -49,7 +49,7 @@ iOS 应用图标需要提供多种尺寸，以适配不同的设备和用途：
    - 背景：可以是透明或纯色
 
 2. **替换文件**：
-   - 找到 `Slient Gym/Assets.xcassets/AppIcon.appiconset/` 目录
+   - 找到 `Silent Gym/Assets.xcassets/AppIcon.appiconset/` 目录
    - 将您的图标文件复制到此目录
    - 更新 `Contents.json` 中的文件名引用
 

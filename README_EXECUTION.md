@@ -7,7 +7,7 @@
 ## 文件结构
 
 ```
-Slient Gym/
+Silent Gym/
 ├── TASKS_M1_CHECKLIST.md          # 主任务清单（P0/P1/P2）
 ├── docs/
 │   ├── INFO_PLIST_SNIPPETS.md     # Info.plist 内容模板

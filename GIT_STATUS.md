@@ -28,7 +28,7 @@ b0e7187 Fix compilation errors
 当网络连接恢复后，可以运行以下命令推送：
 
 ```bash
-cd "/Users/chy5tk/Documents/Slient Gym"
+cd "/Users/chy5tk/Documents/Silent Gym"
 git push origin main
 ```
 

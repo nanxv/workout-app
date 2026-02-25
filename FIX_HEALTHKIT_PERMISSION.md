@@ -10,8 +10,8 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 ### 方法 1：在 Xcode Info 标签中添加（最简单）
 
 1. **打开 Xcode 项目**
-2. **选择项目文件**（最顶部的蓝色图标 "Slient Gym"）
-3. **选择 "Slient Gym" target**（不是项目，是 target）
+2. **选择项目文件**（最顶部的蓝色图标 "Silent Gym"）
+3. **选择 "Silent Gym" target**（不是项目，是 target）
 4. **切换到 "Info" 标签**
 5. **在 "Custom iOS Target Properties" 部分，点击 "+" 按钮添加以下键值对：**
 
@@ -25,7 +25,7 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 
 如果方法 1 不工作，可以尝试：
 
-1. **选择 "Slient Gym" target**
+1. **选择 "Silent Gym" target**
 2. **切换到 "Build Settings" 标签**
 3. **在搜索框中输入 `INFOPLIST_KEY`**
 4. **点击 "+" 按钮添加以下键：**

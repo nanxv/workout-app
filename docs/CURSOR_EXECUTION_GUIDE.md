@@ -9,7 +9,7 @@
 ### 第一步：Xcode 配置（P0）
 1. 打开 Xcode 项目
 2. 按照 `TASKS_M1_CHECKLIST.md` 的 P0 部分逐项完成：
-   - 重命名项目（Slient → Silent）
+   - 重命名项目（Silent → Silent）
    - 配置 Capabilities
    - 添加 Info.plist 权限描述（参考 `docs/INFO_PLIST_SNIPPETS.md`）
    - 检查 Target Membership

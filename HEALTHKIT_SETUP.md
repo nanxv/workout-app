@@ -10,18 +10,18 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 
 ### 方法 1：使用 Info.plist 文件（推荐）
 
-1. 在 Xcode 中，选择项目文件（Slient Gym.xcodeproj）
-2. 选择 **Slient Gym** target
+1. 在 Xcode 中，选择项目文件（Silent Gym.xcodeproj）
+2. 选择 **Silent Gym** target
 3. 在 **Build Settings** 中搜索 `INFOPLIST_FILE`
-4. 设置 `INFOPLIST_FILE` 为 `Slient Gym/Info.plist`
-5. 或者直接在项目导航器中右键点击 **Slient Gym** 文件夹，选择 **Add Files to "Slient Gym"...**
+4. 设置 `INFOPLIST_FILE` 为 `Silent Gym/Info.plist`
+5. 或者直接在项目导航器中右键点击 **Silent Gym** 文件夹，选择 **Add Files to "Silent Gym"...**
 6. 选择已创建的 `Info.plist` 文件
 
 ### 方法 2：在 Build Settings 中直接设置
 
 如果项目使用自动生成的 Info.plist（`GENERATE_INFOPLIST_FILE = YES`），可以在 Build Settings 中添加：
 
-1. 选择 **Slient Gym** target
+1. 选择 **Silent Gym** target
 2. 在 **Build Settings** 中搜索 `INFOPLIST_KEY`
 3. 添加以下键值对：
    - `INFOPLIST_KEY_NSHealthShareUsageDescription` = "我们需要访问您的健康数据以读取跑步记录和心率信息。"
@@ -31,7 +31,7 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 ### 方法 3：在 Xcode 中手动添加
 
 1. 在 Xcode 中，选择项目文件
-2. 选择 **Slient Gym** target
+2. 选择 **Silent Gym** target
 3. 切换到 **Info** 标签
 4. 点击 **+** 按钮添加以下键：
    - `Privacy - Health Share Usage Description` (NSHealthShareUsageDescription)

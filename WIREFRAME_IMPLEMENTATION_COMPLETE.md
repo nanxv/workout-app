@@ -73,29 +73,29 @@
 ## 📁 新增文件
 
 ### 训练相关
-- `Slient Gym/Features/Train/FloatingWorkoutBall.swift` - 悬浮球组件
-- `Slient Gym/Features/Train/ExerciseDetailsView.swift` - 动作详情展开视图
-- `Slient Gym/Features/Train/TrainViewWireframe.swift` - 新的训练视图
+- `Silent Gym/Features/Train/FloatingWorkoutBall.swift` - 悬浮球组件
+- `Silent Gym/Features/Train/ExerciseDetailsView.swift` - 动作详情展开视图
+- `Silent Gym/Features/Train/TrainViewWireframe.swift` - 新的训练视图
 
 ### 计划相关
-- `Slient Gym/Features/Routines/InlineEditComponents.swift` - 行内编辑控件
-- `Slient Gym/Features/Routines/RoutineExerciseRowView.swift` - 动作行视图
-- `Slient Gym/Features/Routines/RoutinesViewWireframe.swift` - 新的计划视图
+- `Silent Gym/Features/Routines/InlineEditComponents.swift` - 行内编辑控件
+- `Silent Gym/Features/Routines/RoutineExerciseRowView.swift` - 动作行视图
+- `Silent Gym/Features/Routines/RoutinesViewWireframe.swift` - 新的计划视图
 
 ### 其他页面
-- `Slient Gym/Features/History/HistoryViewWireframe.swift` - 新的记录视图
-- `Slient Gym/Features/Coach/CoachViewWireframe.swift` - 新的教练视图
-- `Slient Gym/Features/Settings/SettingsView.swift` - 设置页面
-- `Slient Gym/Features/MainTabViewWireframe.swift` - 新的主导航视图
+- `Silent Gym/Features/History/HistoryViewWireframe.swift` - 新的记录视图
+- `Silent Gym/Features/Coach/CoachViewWireframe.swift` - 新的教练视图
+- `Silent Gym/Features/Settings/SettingsView.swift` - 设置页面
+- `Silent Gym/Features/MainTabViewWireframe.swift` - 新的主导航视图
 
 ## 🔄 修改的文件
 
 ### 数据模型
-- `Slient Gym/Domain/Models/SetEntry.swift` - 添加 holdSec, weightKg, isCompleted
-- `Slient Gym/Domain/Models/RoutineExercise.swift` - 添加 holdSecDefault, weightKgDefault, isHoldType
+- `Silent Gym/Domain/Models/SetEntry.swift` - 添加 holdSec, weightKg, isCompleted
+- `Silent Gym/Domain/Models/RoutineExercise.swift` - 添加 holdSecDefault, weightKgDefault, isHoldType
 
 ### 应用入口
-- `Slient Gym/Slient_GymApp.swift` - 切换到 MainTabViewWireframe
+- `Silent Gym/Silent_GymApp.swift` - 切换到 MainTabViewWireframe
 
 ## 🎨 设计特点
 
@@ -135,7 +135,7 @@
 
 ### 切换回旧版本
 
-如果需要切换回旧版本，修改 `Slient_GymApp.swift`：
+如果需要切换回旧版本，修改 `Silent_GymApp.swift`：
 
 ```swift
 MainTabView()  // 旧版本

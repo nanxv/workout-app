@@ -12,7 +12,7 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 
 1. 打开 Xcode
 2. 选择项目文件（蓝色图标）
-3. 选择 **"Slient Gym"** target（不是项目）
+3. 选择 **"Silent Gym"** target（不是项目）
 4. 切换到 **"Info"** 标签
 5. 在 **"Custom iOS Target Properties"** 中查找以下键：
 
@@ -24,7 +24,7 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 
 ### 方法 2：检查 Build Settings
 
-1. 选择 **"Slient Gym"** target
+1. 选择 **"Silent Gym"** target
 2. 切换到 **"Build Settings"** 标签
 3. 在搜索框中输入 `INFOPLIST_KEY`
 4. 查找以下键：
@@ -41,7 +41,7 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 
 1. 在 Xcode 中：`Product > Build` (Cmd+B)
 2. 在 Finder 中打开构建产物：
-   - `~/Library/Developer/Xcode/DerivedData/Slient_Gym-*/Build/Products/Debug-iphonesimulator/Slient Gym.app/Info.plist`
+   - `~/Library/Developer/Xcode/DerivedData/Silent_Gym-*/Build/Products/Debug-iphonesimulator/Silent Gym.app/Info.plist`
 3. 打开 Info.plist 文件，检查是否包含：
    - `NSHealthShareUsageDescription`
    - `NSHealthUpdateUsageDescription`
@@ -51,7 +51,7 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 
 ### 方案 A：创建手动 Info.plist 文件
 
-1. 在 Xcode 中，右键点击 **"Slient Gym"** 文件夹
+1. 在 Xcode 中，右键点击 **"Silent Gym"** 文件夹
 2. 选择 **"New File..."**
 3. 选择 **"Property List"**
 4. 命名为 `Info.plist`
@@ -72,7 +72,7 @@ NSHealthUpdateUsageDescription must be set in the app's Info.plist
 </plist>
 ```
 
-6. 在 Build Settings 中设置 `INFOPLIST_FILE` = `Slient Gym/Info.plist`
+6. 在 Build Settings 中设置 `INFOPLIST_FILE` = `Silent Gym/Info.plist`
 
 ### 方案 B：在代码中延迟请求权限
 

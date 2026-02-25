@@ -21,8 +21,8 @@ jobs:
       
       - name: Build iOS
         run: |
-          xcodebuild -project "Slient Gym.xcodeproj" \
-            -scheme "Slient Gym" \
+          xcodebuild -project "Silent Gym.xcodeproj" \
+            -scheme "Silent Gym" \
             -sdk iphonesimulator \
             -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 15' \
@@ -30,8 +30,8 @@ jobs:
       
       - name: Build watchOS
         run: |
-          xcodebuild -project "Slient Gym.xcodeproj" \
-            -scheme "Slient Gym Watch App" \
+          xcodebuild -project "Silent Gym.xcodeproj" \
+            -scheme "Silent Gym Watch App" \
             -sdk watchsimulator \
             -configuration Debug \
             -destination 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm)' \
